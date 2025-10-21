@@ -1,5 +1,5 @@
 /**
- * Inca London WhatsApp Bot
+ * Caribbean Food Carbet WhatsApp Bot
  * Main entry point - Express server with Meta WhatsApp Business API webhooks
  */
 
@@ -68,7 +68,7 @@ try {
 app.get('/', (req: Request, res: Response) => {
   res.json({
     status: 'running',
-    service: 'Inca London WhatsApp Bot',
+    service: 'Caribbean Food Carbet WhatsApp Bot',
     version: '2.0.0',
     timestamp: new Date().toISOString(),
   });
@@ -103,11 +103,11 @@ app.use((err: Error, req: Request, res: Response, next: any) => {
 
 // Start server
 const server = app.listen(PORT, () => {
-  console.log('\n🚀 Inca London WhatsApp Bot is running!');
+  console.log('\n🚀 Caribbean Food Carbet WhatsApp Bot is running!');
   console.log(`📡 Server listening on port ${PORT}`);
   console.log(`🌐 Webhook URL: http://localhost:${PORT}/webhook`);
   console.log(`💡 Make sure to expose this with ngrok and configure it in Meta Developer Console\n`);
-  console.log('🎭 Ready to assist guests with reservations and inquiries!\n');
+  console.log('🌴 Ready to assist guests with reservations and menu inquiries!\n');
   console.log('⏳ Server is running... Press Ctrl+C to stop\n');
 });
 

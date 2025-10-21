@@ -209,6 +209,49 @@ export class WhatsAppClient {
   }
 
   /**
+   * Send a CTA URL button (Call-To-Action button that opens an external link)
+   * This is useful for sharing menu links, social media, etc.
+   */
+  async sendCTAUrlButton(
+    to: string,
+    bodyText: string,
+    buttonText: string,
+    url: string
+  ): Promise<WhatsAppResponse> {
+    try {
+      const payload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'interactive',
+        interactive: {
+          type: 'cta_url',
+          body: {
+            text: bodyText,
+          },
+          action: {
+            name: 'cta_url',
+            parameters: {
+              display_text: buttonText.substring(0, 20), // WhatsApp limit is 20 chars
+              url: url,
+            },
+          },
+        },
+      };
+
+      console.log(`📤 Sending CTA URL button to ${to}: "${buttonText}" -> ${url}`);
+
+      const response = await this.client.post('/messages', payload);
+
+      console.log('✅ CTA URL button sent successfully');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error sending CTA URL button:', error.response?.data || error.message);
+      throw new Error(`Failed to send CTA URL button: ${error.message}`);
+    }
+  }
+
+  /**
    * Send an interactive list message (for more than 3 options)
    */
   async sendInteractiveList(

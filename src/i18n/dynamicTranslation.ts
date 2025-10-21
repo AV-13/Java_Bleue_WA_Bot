@@ -4,7 +4,7 @@
  */
 
 import { Mastra } from '@mastra/core';
-import { getIncaAgent } from '../agent/mastra.js';
+import { getCaribbeanFoodAgent } from '../agent/mastra.js';
 
 /**
  * Generate translated text using AI for any language
@@ -23,11 +23,11 @@ export async function generateText(
   context?: string
 ): Promise<string> {
   try {
-    const agent = getIncaAgent(mastra);
+    const agent = getCaribbeanFoodAgent(mastra);
 
     const contextInfo = context ? `\n\nContext: ${context}` : '';
 
-    const prompt = `You are a professional translator for Inca London, an upscale Latin American restaurant.
+    const prompt = `You are a professional translator for Caribbean Food Carbet, a beachside Caribbean restaurant in Martinique.
 
 Generate ONLY the following text in ${language} language. Return ONLY the translated text with no explanations, quotes, or additional formatting.
 
@@ -131,7 +131,7 @@ export async function generateReservationConfirmation(
   }
 ): Promise<string> {
   try {
-    const agent = getIncaAgent(mastra);
+    const agent = getCaribbeanFoodAgent(mastra);
 
     const prompt = `Generate a reservation confirmation message in ${language} for a restaurant WhatsApp bot.
 
@@ -215,7 +215,7 @@ export async function generateListLabels(
   language: string
 ): Promise<Array<{ id: string; label: string }>> {
   try {
-    const agent = getIncaAgent(mastra);
+    const agent = getCaribbeanFoodAgent(mastra);
 
     const itemsList = items.map(item => `- ${item.englishLabel}`).join('\n');
 

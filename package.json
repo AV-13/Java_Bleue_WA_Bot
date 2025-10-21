@@ -1,7 +1,7 @@
 {
-  "name": "Inca_London",
-  "version": "1.0.0",
-  "description": "WhatsApp chatbot for Inca London restaurant",
+  "name": "Caribbean_Food_Carbet",
+  "version": "2.0.0",
+  "description": "WhatsApp chatbot for Caribbean Food Carbet restaurant in Martinique",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -16,9 +16,10 @@
     "whatsapp",
     "bot",
     "restaurant",
-    "inca-london"
+    "caribbean-food",
+    "martinique"
   ],
-  "author": "Inca London",
+  "author": "Caribbean Food Carbet",
   "dependencies": {
     "@ai-sdk/openai": "^2.0.52",
     "@mastra/core": "^0.21.0",

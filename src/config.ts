@@ -1,81 +1,59 @@
 /**
- * Inca London Bot Configuration
+ * Caribbean Food Carbet Bot Configuration
  * Contains all restaurant information and bot settings
  */
 
-export const INCA_INFO = {
-  name: 'Inca London',
-  slogan: 'Where Latin Spirit meets London Nights',
+export const RESTAURANT_INFO = {
+  name: 'Caribbean Food Carbet',
+  slogan: 'Un voyage de saveurs entre terre et mer, au coeur de la Caraïbes',
 
   contact: {
-    address: '8-9 Argyll Street, Soho – London W1F 7TF',
-    phone: '+44 (0)20 7734 6066',
-    phonePrivateEvents: '+44 (0)777 181 7677',
+    address: 'Le Coin, Le Carbet 97221, Martinique',
+    phone: '06 96 33 20 35',
     emails: {
-      reservations: 'reservations@incalondon.com',
-      privateEvents: 'dimitri@incalondon.com',
-      mediaPress: 'janel@incalondon.com',
+      reservations: 'caribbeanfoodnord@gmail.com',
+      general: 'caribbeanfoodnord@gmail.com',
     },
-    website: 'https://www.incalondon.com',
-    instagram: '@incalondonofficial',
-    instagramUrl: 'https://www.instagram.com/incalondonofficial/',
-    bookingUrl: 'https://www.sevenrooms.com/reservations/incalondon',
+    instagram: '@caribbean_food_972',
+    instagramUrl: 'https://www.instagram.com/caribbean_food_972/?hl=fr',
   },
 
   hours: {
-    wednesday: '8 PM – Late',
-    thursday: '8 PM – Late',
-    friday: '7 PM – Late',
-    saturday: '7 PM – Late',
-    sunday: '8 PM – Late',
-    closed: ['Monday', 'Tuesday'],
+    monday: '12h - 15h',
+    tuesday: 'Fermé',
+    wednesday: '12h - 15h',
+    thursday: '12h - 15h',
+    friday: '12h - 22h30',
+    saturday: '12h - 22h30',
+    sunday: '12h - 15h',
+    closed: ['Tuesday'],
   },
 
   policies: {
-    ageRestriction: '18+ only',
-    dressCode: 'Smart Elegant – no sportswear, shorts, caps, or sneakers',
-    gracePeriod: '15 minutes maximum after the reservation time',
-    bookingDuration: '2 hours',
-    serviceCharge: '13.5% automatically added to the bill',
-    minSpendApplies: true,
+    dressCode: 'Décontractée - tenue de plage acceptée',
+    reservationPhone: '06 96 33 20 35',
+    reservationEmail: 'caribbeanfoodnord@gmail.com',
   },
 
   dining: {
-    aLaCarteMax: 8,
-    setMenuMin: 9,
-    showStartTime: 'around 8:30–9:00 PM',
-    chef: 'Davide Alberti',
-    cuisineType: 'Latin American fusion with Nikkei influences',
+    cuisineType: 'Cuisine caribéenne et créole, fruits de mer, poissons frais',
+    specialties: [
+      'Fruits de mer frais',
+      'Poissons grillés',
+      'Spécialités créoles',
+      'Cocktails exotiques',
+    ],
+    atmosphere: 'Restaurant en bord de mer avec vue sur l\'océan',
   },
 
-  privateEvents: {
-    maxGuests: 250,
-    maxSeated: 145,
-    privateDiningRoom: 15,
+  location: {
+    description: 'En bord de mer au Coin, Le Carbet, Martinique',
+    beachFront: true,
   },
 
-  transport: {
-    nearestTube: 'Oxford Circus (2 min walk)',
-    parking: 'No parking available – suggest nearby Q-Park Soho',
-  },
-
-  menus: {
-    wine: {
-      name: 'Wine Menu',
-      url: 'https://www.incalondon.com/_files/ugd/325c3c_20753e61bce346538f8868a1485acfd9.pdf',
-    },
-    drinks: {
-      name: 'Drinks Menu',
-      url: 'https://www.incalondon.com/_files/ugd/325c3c_eddf185fa8384622b45ff682b4d14f76.pdf',
-    },
-    alacarte: {
-      name: 'A La Carte Menu',
-      url: 'https://www.incalondon.com/_files/ugd/325c3c_bdde0eb515e54beeba08ce662f63b801.pdf',
-    },
-    wagyu: {
-      name: 'Wagyu Platter Menu',
-      url: 'https://www.incalondon.com/_files/ugd/325c3c_bb9f24cd9a61499bbde31da9841bfb2e.pdf',
-    },
+  menu: {
+    url: 'https://www.canva.com/design/DAGJ58x1g9o/WOx7t3_GavjWjygcZ3TBIw/view?utm_content=DAGJ58x1g9o&utm_campaign=designshare&utm_medium=link&utm_source=viewer#2',
+    type: 'Menu unique avec spécialités caribéennes et créoles',
   },
 };
 

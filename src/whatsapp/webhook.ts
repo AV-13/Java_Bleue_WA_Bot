@@ -10,7 +10,7 @@ import { WhatsAppClient } from './client.js';
 import { Mastra } from '@mastra/core';
 import { processUserMessage, detectLanguageWithMastra } from '../agent/mastra.js';
 import { sessionManager } from '../sessionManager.js';
-import { getDatabase } from '../database/supabase.js';
+// import { getDatabase } from '../database/supabase.js'; // COMMENTED OUT - Supabase disabled for now
 import {
   generateText,
   generateMenuMessage,
@@ -19,7 +19,22 @@ import {
   generateListLabels
 } from '../i18n/dynamicTranslation.js';
 import { processAudioMessage } from '../audio/whisper.js';
-import { generateLocationResponse, INCA_LONDON_LOCATION, type LocationData } from '../location/maps.js';
+// import { generateLocationResponse, INCA_LONDON_LOCATION, type LocationData } from '../location/maps.js'; // COMMENTED OUT - Old restaurant location
+
+// Caribbean Food Carbet location
+const CARIBBEAN_FOOD_LOCATION = {
+  latitude: 14.697429195748091,  // Exact coordinates for Caribbean Food Carbet
+  longitude: -61.18028413084514,
+  name: 'Caribbean Food Carbet',
+  address: 'Le Coin, Le Carbet 97221, Martinique'
+};
+
+type LocationData = {
+  latitude: number;
+  longitude: number;
+  name?: string;
+  address?: string;
+};
 
 /**
  * Set to track processed message IDs (prevents duplicates)
@@ -199,81 +214,23 @@ export async function handleWebhook(
   }
 }
 
-/**
- * Menu configurations
- */
-const MENU_CONFIGS = {
-  'menu_alacarte': {
-    type: 'alacarte',
-    name: 'Menu à la Carte',
-    url: 'https://www.incalondon.com/_files/ugd/325c3c_bdde0eb515e54beeba08ce662f63b801.pdf'
-  },
-  'menu_wagyu': {
-    type: 'wagyu',
-    name: 'Wagyu Platter Menu',
-    url: 'https://www.incalondon.com/_files/ugd/325c3c_bb9f24cd9a61499bbde31da9841bfb2e.pdf'
-  },
-  'menu_wine': {
-    type: 'wine',
-    name: 'Wine Menu',
-    url: 'https://www.incalondon.com/_files/ugd/325c3c_20753e61bce346538f8868a1485acfd9.pdf'
-  },
-  'menu_drinks': {
-    type: 'drinks',
-    name: 'Drinks Menu',
-    url: 'https://www.incalondon.com/_files/ugd/325c3c_eddf185fa8384622b45ff682b4d14f76.pdf'
-  },
-  'menu_all': {
-    type: 'all',
-    name: 'All Menus',
-    url: ''
-  }
-};
+// MENU CONFIGURATIONS REMOVED - Caribbean Food uses single Canva menu link
+// The agent will share the menu link directly in text responses
+const MENU_URL = 'https://www.canva.com/design/DAGJ58x1g9o/WOx7t3_GavjWjygcZ3TBIw/view?utm_content=DAGJ58x1g9o&utm_campaign=designshare&utm_medium=link&utm_source=viewer#2';
 
-/**
- * Send menu selection list
- */
+// MENU BUTTON FUNCTIONS COMMENTED OUT - No longer using interactive menu buttons
+// Caribbean Food uses a single Canva link shared via text message
+
+/*
 async function sendMenuButtons(
   userId: string,
   whatsappClient: WhatsAppClient,
   language: string,
   mastra: Mastra
 ): Promise<void> {
-  const bodyText = await generatePrompt(mastra, 'choose_menu_prompt', language);
-  const buttonText = await generatePrompt(mastra, 'choose_menu_button', language);
-
-  const menuLabels = await generateListLabels(
-    mastra,
-    [
-      { id: 'menu_alacarte', englishLabel: 'À la Carte' },
-      { id: 'menu_wagyu', englishLabel: 'Wagyu' },
-      { id: 'menu_wine', englishLabel: 'Wine' },
-      { id: 'menu_drinks', englishLabel: 'Drinks' }
-    ],
-    language
-  );
-
-  const menusTitle = await generateText(mastra, 'The word "Menus" (1 word)', language);
-
-  await whatsappClient.sendInteractiveList(
-    userId,
-    bodyText,
-    buttonText,
-    [{
-      title: menusTitle,
-      rows: menuLabels.map(item => ({
-        id: item.id,
-        title: item.label
-      }))
-    }]
-  );
-
-  console.log(`✅ Sent menu selection list to ${userId} in language: ${language}`);
+  // Function removed - no longer using interactive menu buttons
 }
 
-/**
- * Handle menu button clicks
- */
 async function handleMenuButtonClick(
   userId: string,
   buttonId: string,
@@ -281,43 +238,9 @@ async function handleMenuButtonClick(
   language: string,
   mastra: Mastra
 ): Promise<void> {
-  const menuConfig = MENU_CONFIGS[buttonId as keyof typeof MENU_CONFIGS];
-
-  if (!menuConfig) {
-    console.error(`Unknown menu button ID: ${buttonId}`);
-    return;
-  }
-
-  if (menuConfig.type === 'all') {
-    console.log(`📋 Sending all menus to ${userId} in language: ${language}`);
-
-    for (const [key, config] of Object.entries(MENU_CONFIGS)) {
-      if (config.type !== 'all') {
-        try {
-          const menuMessage = await generateMenuMessage(mastra, config.type, language);
-          await whatsappClient.sendDocument(
-            userId,
-            config.url,
-            `${config.name}.pdf`,
-            menuMessage
-          );
-          console.log(`✅ Sent ${config.name} PDF to ${userId}`);
-        } catch (error) {
-          console.error(`❌ Failed to send ${config.name} PDF:`, error);
-        }
-      }
-    }
-  } else {
-    const menuMessage = await generateMenuMessage(mastra, menuConfig.type, language);
-    await whatsappClient.sendDocument(
-      userId,
-      menuConfig.url,
-      `${menuConfig.name}.pdf`,
-      menuMessage
-    );
-    console.log(`✅ Sent ${menuConfig.name} PDF to ${userId} in language: ${language}`);
-  }
+  // Function removed - no longer using menu button clicks
 }
+*/
 
 /**
  * Process incoming WhatsApp message
@@ -327,7 +250,7 @@ async function processIncomingMessage(
   whatsappClient: WhatsAppClient,
   mastra: Mastra
 ): Promise<void> {
-  const database = getDatabase();
+  // const database = getDatabase(); // COMMENTED OUT - Supabase disabled
 
   try {
     const userId = message.from;
@@ -370,20 +293,18 @@ async function processIncomingMessage(
           throw new Error('META_WHATSAPP_TOKEN not configured');
         }
 
-        const tempConversation = await database.getOrCreateConversation(userId);
-        const tempMessages = await database.getConversationHistory(tempConversation.id, 5);
-        const tempHistory = database.formatHistoryForMastra(tempMessages);
-        const languageHint = await detectUserLanguage(userId, '', mastra, tempHistory);
+        // const tempConversation = await database.getOrCreateConversation(userId);
+        // const tempMessages = await database.getConversationHistory(tempConversation.id, 5);
+        // const tempHistory = database.formatHistoryForMastra(tempMessages);
+        // const languageHint = await detectUserLanguage(userId, '', mastra, tempHistory);
+        const languageHint = 'fr'; // Default to French for Martinique
 
         const transcription = await processAudioMessage(mediaId, accessToken, languageHint);
         userMessage = transcription;
 
         console.log(`✅ Transcription: "${transcription}"`);
 
-        await whatsappClient.sendTextMessage(
-          userId,
-          `🎤 ${await generateText(mastra, 'Say "I heard:" followed by what you transcribed (very short)', languageHint)} "${transcription}"`
-        );
+        // Removed intermediate "I heard" message - process transcription directly
       } catch (error: any) {
         console.error('❌ Error transcribing audio:', error);
         const errorLang = await detectUserLanguage(userId, '', mastra);
@@ -401,28 +322,23 @@ async function processIncomingMessage(
       console.log(`📍 Location received: ${message.location.latitude}, ${message.location.longitude}`);
 
       try {
-        const tempConversation = await database.getOrCreateConversation(userId);
-        const tempMessages = await database.getConversationHistory(tempConversation.id, 5);
-        const tempHistory = database.formatHistoryForMastra(tempMessages);
-        const userLanguage = await detectUserLanguage(userId, '', mastra, tempHistory);
+        // const tempConversation = await database.getOrCreateConversation(userId);
+        // const tempMessages = await database.getConversationHistory(tempConversation.id, 5);
+        // const tempHistory = database.formatHistoryForMastra(tempMessages);
+        // const userLanguage = await detectUserLanguage(userId, '', mastra, tempHistory);
+        const userLanguage = 'fr'; // Default to French
 
-        const locationData: LocationData = {
-          latitude: message.location.latitude,
-          longitude: message.location.longitude,
-          name: message.location.name,
-          address: message.location.address
-        };
-
-        const locationResponse = await generateLocationResponse(mastra, locationData, userLanguage);
+        // Simple location response without using generateLocationResponse
+        const locationResponse = `Merci pour votre localisation ! Voici notre adresse : ${CARIBBEAN_FOOD_LOCATION.address}`;
 
         await whatsappClient.sendTextMessage(userId, locationResponse);
 
         await whatsappClient.sendLocationMessage(
           userId,
-          INCA_LONDON_LOCATION.latitude,
-          INCA_LONDON_LOCATION.longitude,
-          INCA_LONDON_LOCATION.name,
-          INCA_LONDON_LOCATION.address
+          CARIBBEAN_FOOD_LOCATION.latitude,
+          CARIBBEAN_FOOD_LOCATION.longitude,
+          CARIBBEAN_FOOD_LOCATION.name,
+          CARIBBEAN_FOOD_LOCATION.address
         );
 
         console.log(`✅ Sent location response and restaurant location to ${userId}`);
@@ -463,37 +379,38 @@ async function processIncomingMessage(
     await whatsappClient.markAsRead(messageId);
     await whatsappClient.sendTypingIndicator(userId);
 
-    // Database integration
-    const conversation = await database.getOrCreateConversation(userId);
-    const isNewUser = await database.isNewUser(userId);
+    // Database integration - COMMENTED OUT (Supabase disabled)
+    // const conversation = await database.getOrCreateConversation(userId);
+    // const isNewUser = await database.isNewUser(userId);
+    const isNewUser = false; // Default to false since database is disabled
 
-    await database.saveMessage({
-      conversation_id: conversation.id,
-      wa_message_id: messageId,
-      direction: 'in',
-      sender: 'user',
-      message_type: message.type,
-      text_content: userMessage
-    });
+    // await database.saveMessage({
+    //   conversation_id: conversation.id,
+    //   wa_message_id: messageId,
+    //   direction: 'in',
+    //   sender: 'user',
+    //   message_type: message.type,
+    //   text_content: userMessage
+    // });
 
-    const messages = await database.getConversationHistory(conversation.id, 10);
-    const conversationHistory = database.formatHistoryForMastra(messages);
+    // const messages = await database.getConversationHistory(conversation.id, 10);
+    // const conversationHistory = database.formatHistoryForMastra(messages);
+    const conversationHistory = undefined; // No conversation history without database
 
     const detectedLanguage = await detectUserLanguage(userId, userMessage, mastra, conversationHistory);
 
-    // Handle "View Menus" button
-    if (userMessage === 'action_view_menus') {
-      await sendMenuButtons(userId, whatsappClient, detectedLanguage, mastra);
-      console.log(`✅ Processing complete for ${userId}`);
-      return;
-    }
+    // MENU BUTTON HANDLING REMOVED - No longer using interactive buttons
+    // if (userMessage === 'action_view_menus') {
+    //   await sendMenuButtons(userId, whatsappClient, detectedLanguage, mastra);
+    //   console.log(`✅ Processing complete for ${userId}`);
+    //   return;
+    // }
 
-    // Handle menu requests
-    if (userMessage.startsWith('menu_')) {
-      await handleMenuButtonClick(userId, userMessage, whatsappClient, detectedLanguage, mastra);
-      console.log(`✅ Processing complete for ${userId}`);
-      return;
-    }
+    // if (userMessage.startsWith('menu_')) {
+    //   await handleMenuButtonClick(userId, userMessage, whatsappClient, detectedLanguage, mastra);
+    //   console.log(`✅ Processing complete for ${userId}`);
+    //   return;
+    // }
 
     // Process through Mastra
     const agentResponse = await processUserMessage(
@@ -504,71 +421,55 @@ async function processIncomingMessage(
       isNewUser
     );
 
-    const userLanguage = agentResponse.detectedLanguage || 'en';
+    const userLanguage = agentResponse.detectedLanguage || 'fr';
 
-    // Handle agent responses
-    if (agentResponse.sendAllMenus) {
-      console.log(`📋 Sending all menus to ${userId}`);
-      await handleMenuButtonClick(userId, 'menu_all', whatsappClient, userLanguage, mastra);
-      console.log(`✅ Processing complete for ${userId}`);
-      return;
-    }
+    // MENU RESPONSE HANDLING REMOVED - Agent now shares menu link directly in text
+    // No need for special menu handling - the Canva link is included in agent responses
 
-
-    if (agentResponse.showMenuButtons) {
-      console.log(`📋 Showing menu selection list to ${userId}`);
-      await sendMenuButtons(userId, whatsappClient, userLanguage, mastra);
-      console.log(`✅ Processing complete for ${userId}`);
-      return;
-    }
-
-    if (agentResponse.menusToSend && agentResponse.menusToSend.length > 0) {
-      console.log(`📋 Sending ${agentResponse.menusToSend.length} menu PDF(s) in language: ${userLanguage}`);
-
-      for (const menu of agentResponse.menusToSend) {
-        try {
-          const menuMessage = await generateMenuMessage(mastra, menu.type, userLanguage);
-
-          await whatsappClient.sendDocument(
-            userId,
-            menu.url,
-            `${menu.name}.pdf`,
-            menuMessage
-          );
-          console.log(`✅ Sent ${menu.name} PDF to ${userId} with message: "${menuMessage}"`);
-        } catch (error) {
-          console.error(`❌ Failed to send ${menu.name} PDF:`, error);
-        }
-      }
-    }
-
-    // Send text response
+    // Send response (with or without menu button)
     if (agentResponse.text && agentResponse.text.trim().length > 0) {
-      await whatsappClient.sendTextMessage(userId, agentResponse.text);
+      // If menu button should be sent, include it in the same message
+      if (agentResponse.sendMenuButton) {
+        console.log(`📋 Sending response with menu button to ${userId}`);
 
-      await database.saveMessage({
-        conversation_id: conversation.id,
-        direction: 'out',
-        sender: 'bot',
-        message_type: 'text',
-        text_content: agentResponse.text
-      });
+        // Translate "View menu" button label to user's language
+        const menuButtonLabel = await generateText(
+          mastra,
+          'Button text for "View menu" (2-3 words max)',
+          userLanguage,
+          'Button that opens the restaurant menu in a web browser'
+        );
 
-      console.log(`✅ Text response sent to ${userId}`);
+        await whatsappClient.sendCTAUrlButton(
+          userId,
+          agentResponse.text, // Use bot's response as the message body
+          menuButtonLabel,
+          MENU_URL
+        );
+        console.log(`✅ Response with menu button sent to ${userId} (button: "${menuButtonLabel}")`);
+      } else {
+        // Send regular text message
+        await whatsappClient.sendTextMessage(userId, agentResponse.text);
+        console.log(`✅ Text response sent to ${userId}`);
+      }
 
-      // Check if response mentions address
-      const addressKeywords = ['address', 'adresse', 'argyll street', 'oxford circus', 'soho', 'w1f 7tf', 'where are you', 'où êtes-vous', '8-9 argyll'];
-      const responseText = agentResponse.text.toLowerCase();
-      const mentionsAddress = addressKeywords.some(keyword => responseText.includes(keyword.toLowerCase()));
+      // await database.saveMessage({
+      //   conversation_id: conversation.id,
+      //   direction: 'out',
+      //   sender: 'bot',
+      //   message_type: 'text',
+      //   text_content: agentResponse.text
+      // }); // COMMENTED OUT - Supabase disabled
 
-      if (mentionsAddress) {
-        console.log(`📍 Response mentions address, sending location pin to ${userId}`);
+      // Send location pin if user explicitly requested it
+      if (agentResponse.sendLocation) {
+        console.log(`📍 User requested location, sending location pin to ${userId}`);
         await whatsappClient.sendLocationMessage(
           userId,
-          INCA_LONDON_LOCATION.latitude,
-          INCA_LONDON_LOCATION.longitude,
-          INCA_LONDON_LOCATION.name,
-          INCA_LONDON_LOCATION.address
+          CARIBBEAN_FOOD_LOCATION.latitude,
+          CARIBBEAN_FOOD_LOCATION.longitude,
+          CARIBBEAN_FOOD_LOCATION.name,
+          CARIBBEAN_FOOD_LOCATION.address
         );
         console.log(`✅ Location pin sent to ${userId}`);
       }
@@ -595,7 +496,7 @@ async function processIncomingMessage(
       try {
         await whatsappClient.sendTextMessage(
           message.from,
-          "I apologize, but I'm experiencing a technical issue. Please try again in a moment, or contact us directly:\n\n📞 +44 (0)20 7734 6066\n📧 reservations@incalondon.com"
+          "Je m'excuse, mais je rencontre un problème technique. Veuillez réessayer dans un moment, ou nous contacter directement:\n\n📞 06 96 33 20 35\n📧 caribbeanfoodnord@gmail.com"
         );
       } catch (finalError) {
         console.error('❌ Failed to send fallback error message:', finalError);
