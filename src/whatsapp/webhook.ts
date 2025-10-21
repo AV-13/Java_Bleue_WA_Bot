@@ -8,7 +8,7 @@
 import { Request, Response } from 'express';
 import { WhatsAppClient } from './client.js';
 import { Mastra } from '@mastra/core';
-import { processUserMessage, detectLanguageWithMastra } from '../agent/mastra.js';
+import { processUserMessage, detectLanguageWithMastra, getJavaBleuAgent } from '../agent/mastra.js';
 import { sessionManager } from '../sessionManager.js';
 // import { getDatabase } from '../database/supabase.js'; // COMMENTED OUT - Supabase disabled for now
 import {
@@ -21,12 +21,12 @@ import {
 import { processAudioMessage } from '../audio/whisper.js';
 // import { generateLocationResponse, INCA_LONDON_LOCATION, type LocationData } from '../location/maps.js'; // COMMENTED OUT - Old restaurant location
 
-// Caribbean Food Carbet location
-const CARIBBEAN_FOOD_LOCATION = {
-  latitude: 14.697429195748091,  // Exact coordinates for Caribbean Food Carbet
-  longitude: -61.18028413084514,
-  name: 'Caribbean Food Carbet',
-  address: 'Le Coin, Le Carbet 97221, Martinique'
+// La Java Bleue location
+const JAVA_BLEUE_LOCATION = {
+  latitude: 45.4397,  // Coordinates for La Java Bleue, Saint-Etienne (à vérifier)
+  longitude: 4.3872,
+  name: 'La Java Bleue',
+  address: '2 cours Fauriel, 42100 Saint-Etienne'
 };
 
 type LocationData = {
@@ -44,8 +44,85 @@ const processedMessages = new Set<string>();
 const MESSAGE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
+ * Cache to store user's detected language (in-memory, persists across messages)
+ * Key: userId, Value: { language: string, lastUpdated: number }
+ */
+const userLanguageCache = new Map<string, { language: string; lastUpdated: number }>();
+const LANGUAGE_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+// Clean up expired language cache entries every hour
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, data] of userLanguageCache.entries()) {
+    if (now - data.lastUpdated > LANGUAGE_CACHE_DURATION) {
+      userLanguageCache.delete(userId);
+      console.log(`🗑️ Cleaned up expired language cache for user ${userId}`);
+    }
+  }
+}, 60 * 60 * 1000); // Run every hour
+
+/**
+ * Detect user's specific intent using AI (works in ALL languages)
+ * Returns the action ID if a specific action is requested, or 'greeting' for general greeting, or null for other messages
+ */
+async function detectUserIntent(
+  userMessage: string,
+  mastra: Mastra
+): Promise<string | null> {
+  try {
+    const agent = getJavaBleuAgent(mastra);
+
+    const prompt = `Analyze this user message and determine their intent. Choose ONE option from this list:
+
+1. "greeting" - General greeting without specific request (examples: "Hello", "Bonjour", "Hi", "Hola")
+2. "action_view_menu" - Wants to see the menu/food/carte (examples: "Show me the menu", "Je veux voir la carte", "Menu please")
+3. "action_reserve" - Wants to book/reserve a table (examples: "I want to reserve", "Réserver une table", "Book a table")
+4. "action_hours" - Wants to know opening hours (examples: "What time are you open?", "Horaires d'ouverture", "When are you open?")
+5. "action_location" - Wants to know address/location (examples: "Where are you?", "Adresse du restaurant", "Location please")
+6. "action_contact" - Wants contact information (examples: "How can I contact you?", "Coordonnées", "Phone number")
+7. "action_delivery" - Wants to order delivery (examples: "Livraison", "I want delivery", "Order delivery")
+8. "action_takeaway" - Wants to order takeaway (examples: "À emporter", "Takeaway", "Order to go")
+9. "action_gift_cards" - Wants information about gift cards (examples: "Bon cadeau", "Gift card", "Chèque cadeau")
+10. "action_shop" - Wants to see the shop (examples: "Boutique", "Shop", "Buy something")
+11. "other" - Other messages that don't fit above categories
+
+IMPORTANT:
+- Only respond with ONE of these exact strings
+- If the message is a GENERAL greeting without a specific request, respond "greeting"
+- If the message asks for a SPECIFIC action, respond with the action ID (like "action_view_menu")
+- If unclear or doesn't match, respond "other"
+
+User message: "${userMessage}"
+
+Intent:`;
+
+    const result = await agent.generate(prompt);
+    const intent = (result.text || 'other').trim().toLowerCase();
+
+    console.log(`🎯 Intent detected for "${userMessage}": ${intent}`);
+
+    // Validate the response
+    const validIntents = [
+      'greeting', 'action_view_menu', 'action_reserve', 'action_hours',
+      'action_location', 'action_contact', 'action_delivery', 'action_takeaway',
+      'action_gift_cards', 'action_shop', 'other'
+    ];
+
+    if (validIntents.includes(intent)) {
+      return intent === 'other' ? null : intent;
+    }
+
+    return null;
+  } catch (error: any) {
+    console.error('❌ Error detecting intent:', error);
+    return null;
+  }
+}
+
+/**
  * Detect user's language from conversation history
  * Uses the most recent text messages to detect language, ignoring button IDs
+ * Stores detected language in cache for future button clicks
  */
 async function detectUserLanguage(
   userId: string,
@@ -58,6 +135,13 @@ async function detectUserLanguage(
     const isButtonClick = userMessage.startsWith('menu_') || userMessage.startsWith('action_');
 
     if (isButtonClick) {
+      // Check cache first for button clicks
+      const cachedLanguage = userLanguageCache.get(userId);
+      if (cachedLanguage && (Date.now() - cachedLanguage.lastUpdated) < LANGUAGE_CACHE_DURATION) {
+        console.log(`🌍 Button click - using cached language for ${userId}: ${cachedLanguage.language}`);
+        return cachedLanguage.language;
+      }
+
       // Try to extract language from conversation history
       if (conversationHistory) {
         const historyLines = conversationHistory.split('\n');
@@ -70,20 +154,28 @@ async function detectUserLanguage(
                 lastUserMessage.length > 5) {
               console.log(`🌍 Detecting language from history: "${lastUserMessage}"`);
               const detectedLanguage = await detectLanguageWithMastra(mastra, lastUserMessage);
+              // Cache it
+              userLanguageCache.set(userId, { language: detectedLanguage, lastUpdated: Date.now() });
               return detectedLanguage;
             }
           }
         }
       }
-      console.log('🌍 Button click detected, no valid history - defaulting to English');
-      return 'en';
+      console.log('🌍 Button click detected, no valid cache or history - defaulting to French');
+      return 'fr'; // Default to French for La Java Bleue
     }
 
+    // For regular messages, detect language and cache it
     const detectedLanguage = await detectLanguageWithMastra(mastra, userMessage);
+
+    // Cache the detected language for this user
+    userLanguageCache.set(userId, { language: detectedLanguage, lastUpdated: Date.now() });
+    console.log(`🌍 Cached language for ${userId}: ${detectedLanguage}`);
+
     return detectedLanguage;
   } catch (error: any) {
     console.error('❌ Error detecting language:', error);
-    return 'en';
+    return 'fr'; // Default to French for La Java Bleue
   }
 }
 
@@ -214,33 +306,283 @@ export async function handleWebhook(
   }
 }
 
-// MENU CONFIGURATIONS REMOVED - Caribbean Food uses single Canva menu link
-// The agent will share the menu link directly in text responses
-const MENU_URL = 'https://www.canva.com/design/DAGJ58x1g9o/WOx7t3_GavjWjygcZ3TBIw/view?utm_content=DAGJ58x1g9o&utm_campaign=designshare&utm_medium=link&utm_source=viewer#2';
+// SERVICE LINKS CONFIGURATION - La Java Bleue
+const MENU_URL = 'https://www.restaurant-lajavableue.fr/la-carte-de-la-java-bleue/';
+const RESERVATION_URL = 'https://bookings.zenchef.com/results?rid=348636&pid=1001';
+const DELIVERY_URL = 'https://www.restaurant-lajavableue.fr/?livraison';
+const TAKEAWAY_URL = 'https://ccdl.zenchef.com/articles?rid=348636';
+const GIFT_CARD_URL = 'https://lajavableue.bonkdo.com/fr/';
 
-// MENU BUTTON FUNCTIONS COMMENTED OUT - No longer using interactive menu buttons
-// Caribbean Food uses a single Canva link shared via text message
-
-/*
-async function sendMenuButtons(
+/**
+ * Send main menu with all available actions (multilingue)
+ */
+async function sendMainMenu(
   userId: string,
   whatsappClient: WhatsAppClient,
   language: string,
   mastra: Mastra
 ): Promise<void> {
-  // Function removed - no longer using interactive menu buttons
+  try {
+    console.log(`📋 Sending main menu to ${userId} in language: ${language}`);
+
+    // Define menu items in English (to be translated)
+    const menuItems = [
+      { id: 'action_view_menu', englishLabel: 'View our menu', description: 'See our full menu card' },
+      { id: 'action_reserve', englishLabel: 'Book a table', description: 'Make a reservation' },
+      { id: 'action_hours', englishLabel: 'Opening hours', description: 'Check when we are open' },
+      { id: 'action_location', englishLabel: 'Location & Address', description: 'Get directions to the restaurant' },
+      { id: 'action_contact', englishLabel: 'Contact us', description: 'Get our contact information' },
+      { id: 'action_delivery', englishLabel: 'Delivery', description: 'Order for delivery' },
+      { id: 'action_takeaway', englishLabel: 'Takeaway', description: 'Order for takeaway' },
+      { id: 'action_gift_cards', englishLabel: 'Gift cards', description: 'Buy a gift card' },
+      { id: 'action_shop', englishLabel: 'Shop', description: 'Browse our shop' },
+    ];
+
+    // Translate menu item labels using AI
+    const translatedLabels = await generateListLabels(
+      mastra,
+      menuItems.map(item => ({ id: item.id, englishLabel: item.englishLabel })),
+      language
+    );
+
+    // Translate descriptions
+    const translatedDescriptions = await generateListLabels(
+      mastra,
+      menuItems.map(item => ({ id: item.id, englishLabel: item.description })),
+      language
+    );
+
+    // Build rows with translated labels and descriptions
+    const rows = menuItems.map((item, index) => ({
+      id: item.id,
+      title: translatedLabels[index]?.label || item.englishLabel,
+      description: translatedDescriptions[index]?.label || item.description,
+    }));
+
+    // Generate body text and button text
+    // Warm and friendly welcome message (a bit longer for warmth)
+    const bodyText = await generateText(
+      mastra,
+      'Warm welcome message for La Java Bleue restaurant. Say welcome and ask how can I help you today. Around 10-15 words. Be friendly, inviting and make them feel welcome.',
+      language,
+      'Welcoming greeting for a restaurant chatbot - should feel warm and personal like a friendly server'
+    );
+
+    const buttonText = await generateText(
+      mastra,
+      'Button text meaning "View options" or "See menu". MUST be translated to the target language. Max 2 words. Examples: French="Voir les options", Spanish="Ver opciones", Polish="Zobacz opcje"',
+      language,
+      'Button that opens a list of restaurant services - MUST be in the target language'
+    );
+
+    // Send interactive list with single section
+    await whatsappClient.sendInteractiveList(
+      userId,
+      bodyText,
+      buttonText,
+      [
+        {
+          title: await generateText(mastra, 'Section title "Services" (1 word)', language),
+          rows: rows,
+        },
+      ]
+    );
+
+    console.log(`✅ Main menu sent to ${userId}`);
+  } catch (error: any) {
+    console.error('❌ Error sending main menu:', error);
+    // Fallback to simple text message (also translated by AI)
+    try {
+      const fallbackText = await generateText(
+        mastra,
+        'Ask "How can I help you today?" in a friendly way. Max 8 words.',
+        language,
+        'Fallback message when interactive menu fails'
+      );
+      await whatsappClient.sendTextMessage(userId, fallbackText);
+    } catch (fallbackError) {
+      // Last resort fallback (only if AI translation also fails)
+      const lastResortText = language === 'fr'
+        ? 'Comment puis-je vous aider ?'
+        : 'How can I help you?';
+      await whatsappClient.sendTextMessage(userId, lastResortText);
+    }
+  }
 }
 
-async function handleMenuButtonClick(
+/**
+ * Handle main menu action clicks
+ */
+async function handleMainMenuAction(
   userId: string,
-  buttonId: string,
+  actionId: string,
   whatsappClient: WhatsAppClient,
   language: string,
   mastra: Mastra
 ): Promise<void> {
-  // Function removed - no longer using menu button clicks
+  try {
+    console.log(`🎯 Handling main menu action: ${actionId} for user ${userId}`);
+
+    switch (actionId) {
+      case 'action_view_menu':
+        // Send menu link with button - friendly inviting message
+        const menuMessage = await generateText(
+          mastra,
+          'Friendly message for viewing our menu. Say something inviting about our menu like "Discover our delicious menu!" Around 10-12 words. Be warm and appetizing.',
+          language
+        );
+        const menuButtonLabel = await generateText(
+          mastra,
+          'Button text for "View menu" (2 words max)',
+          language
+        );
+        await whatsappClient.sendCTAUrlButton(
+          userId,
+          menuMessage,
+          menuButtonLabel,
+          MENU_URL
+        );
+        break;
+
+      case 'action_reserve':
+        // Send reservation info with button - friendly inviting message
+        const reserveMessage = await generateText(
+          mastra,
+          'Friendly message for booking a table. Say something inviting like "Reserve your table easily!" Around 10-12 words. Be warm and welcoming.',
+          language
+        );
+        const reserveButtonLabel = await generateText(
+          mastra,
+          'Button text for "Book table" or "Reserve" (2 words max)',
+          language
+        );
+        await whatsappClient.sendCTAUrlButton(
+          userId,
+          reserveMessage,
+          reserveButtonLabel,
+          RESERVATION_URL
+        );
+        break;
+
+      case 'action_hours':
+        // Send opening hours info - well formatted, friendly with LINE BREAKS
+        const hoursMessage = await generateText(
+          mastra,
+          'Tell our opening hours warmly with proper formatting. Structure:\n1. Start with welcoming phrase\n2. NEW LINE then hours: "🕐 11:30 - 21:30" \n3. Same line or new line: "Open 7 days a week, continuously"\n4. NEW LINE then add something nice like "Perfect for lunch or dinner!"\n\nIMPORTANT: Use line breaks (\\n) for readability. Be welcoming and warm.',
+          language
+        );
+        await whatsappClient.sendTextMessage(userId, hoursMessage);
+        break;
+
+      case 'action_location':
+        // Send location pin directly without unnecessary message
+        await whatsappClient.sendLocationMessage(
+          userId,
+          JAVA_BLEUE_LOCATION.latitude,
+          JAVA_BLEUE_LOCATION.longitude,
+          JAVA_BLEUE_LOCATION.name,
+          JAVA_BLEUE_LOCATION.address
+        );
+        break;
+
+      case 'action_contact':
+        // Send contact info - well formatted with emojis, warmth and LINE BREAKS
+        const contactMessage = await generateText(
+          mastra,
+          'Provide contact information in a friendly warm message with proper formatting. Structure:\n1. Welcoming sentence like "Feel free to contact us!"\n2. NEW LINE then Phone with icon: 📞 04 77 21 80 68\n3. NEW LINE then Website with icon: 🌐 https://www.restaurant-lajavableue.fr/\n\nIMPORTANT: Use actual line breaks (\\n) between each line for readability. Be welcoming and helpful.',
+          language
+        );
+        await whatsappClient.sendTextMessage(userId, contactMessage);
+        break;
+
+      case 'action_delivery':
+        // Send delivery link with button - friendly message
+        const deliveryMessage = await generateText(
+          mastra,
+          'Friendly message for delivery service. Say something inviting about ordering delivery. Around 10-12 words. Be warm and helpful.',
+          language
+        );
+        const deliveryButtonLabel = await generateText(
+          mastra,
+          'Button text for "Order delivery" (2 words max)',
+          language
+        );
+        await whatsappClient.sendCTAUrlButton(
+          userId,
+          deliveryMessage,
+          deliveryButtonLabel,
+          DELIVERY_URL
+        );
+        break;
+
+      case 'action_takeaway':
+        // Send takeaway link with button - friendly message
+        const takeawayMessage = await generateText(
+          mastra,
+          'Friendly message for takeaway service. Say something inviting about ordering takeaway. Around 10-12 words. Be warm and helpful.',
+          language
+        );
+        const takeawayButtonLabel = await generateText(
+          mastra,
+          'Button text for "Order takeaway" (2 words max)',
+          language
+        );
+        await whatsappClient.sendCTAUrlButton(
+          userId,
+          takeawayMessage,
+          takeawayButtonLabel,
+          TAKEAWAY_URL
+        );
+        break;
+
+      case 'action_gift_cards':
+        // Send gift cards link with button - friendly message with details
+        const giftCardMessage = await generateText(
+          mastra,
+          'Friendly message for gift cards with details. Structure:\n1. Inviting sentence about gift cards being a great gift idea\n2. NEW LINE then mention: From 50€, valid for 365 days\n3. NEW LINE then something warm like "Perfect for any occasion!"\n\nIMPORTANT: Use line breaks (\\n) for readability. Be warm and enthusiastic. Around 15-20 words total.',
+          language
+        );
+        const giftCardButtonLabel = await generateText(
+          mastra,
+          'Button text for "Buy gift card" (2 words max)',
+          language
+        );
+        await whatsappClient.sendCTAUrlButton(
+          userId,
+          giftCardMessage,
+          giftCardButtonLabel,
+          GIFT_CARD_URL
+        );
+        break;
+
+      case 'action_shop':
+        // Send shop link with button - friendly message mentioning Loire recipes book with details
+        const shopMessage = await generateText(
+          mastra,
+          'Friendly message for our shop. Structure:\n1. Inviting sentence about discovering our shop\n2. NEW LINE then mention: "Loire Recipes Book" by 25 local chefs (24.90€)\n3. NEW LINE then something warm about local gastronomy\n\nIMPORTANT: Use line breaks (\\n) for readability. Be warm and inviting. Around 15-20 words total.',
+          language
+        );
+        const shopButtonLabel = await generateText(
+          mastra,
+          'Button text for "Visit shop" (2 words max)',
+          language
+        );
+        await whatsappClient.sendCTAUrlButton(
+          userId,
+          shopMessage,
+          shopButtonLabel,
+          'https://lajavableue.bonkdo.com/fr/shop/'
+        );
+        break;
+
+      default:
+        console.warn(`⚠️ Unknown main menu action: ${actionId}`);
+        break;
+    }
+  } catch (error: any) {
+    console.error(`❌ Error handling main menu action ${actionId}:`, error);
+  }
 }
-*/
 
 /**
  * Process incoming WhatsApp message
@@ -297,7 +639,7 @@ async function processIncomingMessage(
         // const tempMessages = await database.getConversationHistory(tempConversation.id, 5);
         // const tempHistory = database.formatHistoryForMastra(tempMessages);
         // const languageHint = await detectUserLanguage(userId, '', mastra, tempHistory);
-        const languageHint = 'fr'; // Default to French for Martinique
+        const languageHint = 'fr'; // Default to French
 
         const transcription = await processAudioMessage(mediaId, accessToken, languageHint);
         userMessage = transcription;
@@ -329,16 +671,16 @@ async function processIncomingMessage(
         const userLanguage = 'fr'; // Default to French
 
         // Simple location response without using generateLocationResponse
-        const locationResponse = `Merci pour votre localisation ! Voici notre adresse : ${CARIBBEAN_FOOD_LOCATION.address}`;
+        const locationResponse = `Merci pour votre localisation ! Voici notre adresse : ${JAVA_BLEUE_LOCATION.address}`;
 
         await whatsappClient.sendTextMessage(userId, locationResponse);
 
         await whatsappClient.sendLocationMessage(
           userId,
-          CARIBBEAN_FOOD_LOCATION.latitude,
-          CARIBBEAN_FOOD_LOCATION.longitude,
-          CARIBBEAN_FOOD_LOCATION.name,
-          CARIBBEAN_FOOD_LOCATION.address
+          JAVA_BLEUE_LOCATION.latitude,
+          JAVA_BLEUE_LOCATION.longitude,
+          JAVA_BLEUE_LOCATION.name,
+          JAVA_BLEUE_LOCATION.address
         );
 
         console.log(`✅ Sent location response and restaurant location to ${userId}`);
@@ -399,18 +741,22 @@ async function processIncomingMessage(
 
     const detectedLanguage = await detectUserLanguage(userId, userMessage, mastra, conversationHistory);
 
-    // MENU BUTTON HANDLING REMOVED - No longer using interactive buttons
-    // if (userMessage === 'action_view_menus') {
-    //   await sendMenuButtons(userId, whatsappClient, detectedLanguage, mastra);
-    //   console.log(`✅ Processing complete for ${userId}`);
-    //   return;
-    // }
+    // Handle main menu action clicks
+    if (userMessage.startsWith('action_')) {
+      await handleMainMenuAction(userId, userMessage, whatsappClient, detectedLanguage, mastra);
+      console.log(`✅ Processing complete for ${userId}`);
+      return;
+    }
 
-    // if (userMessage.startsWith('menu_')) {
-    //   await handleMenuButtonClick(userId, userMessage, whatsappClient, detectedLanguage, mastra);
-    //   console.log(`✅ Processing complete for ${userId}`);
-    //   return;
-    // }
+    // Check if user message is a greeting or menu request using AI (works in ALL languages)
+    // const isGreetingOrMenuRequest = await checkIfGreetingOrMenuRequest(userMessage, mastra);
+
+    // Send main menu directly for greetings or menu requests
+    if (!userMessage.includes('carte') && !userMessage.includes('food')) {
+      await sendMainMenu(userId, whatsappClient, detectedLanguage, mastra);
+      console.log(`✅ Main menu sent for greeting/menu request - ${userId}`);
+      return;
+    }
 
     // Process through Mastra
     const agentResponse = await processUserMessage(
@@ -426,29 +772,86 @@ async function processIncomingMessage(
     // MENU RESPONSE HANDLING REMOVED - Agent now shares menu link directly in text
     // No need for special menu handling - the Canva link is included in agent responses
 
-    // Send response (with or without menu button)
+    // Send response (with or without service buttons)
     if (agentResponse.text && agentResponse.text.trim().length > 0) {
-      // If menu button should be sent, include it in the same message
+      // Check which button to send (priority: menu > reservation > delivery > takeaway > gift card)
       if (agentResponse.sendMenuButton) {
         console.log(`📋 Sending response with menu button to ${userId}`);
-
-        // Translate "View menu" button label to user's language
         const menuButtonLabel = await generateText(
           mastra,
           'Button text for "View menu" (2-3 words max)',
           userLanguage,
           'Button that opens the restaurant menu in a web browser'
         );
-
         await whatsappClient.sendCTAUrlButton(
           userId,
-          agentResponse.text, // Use bot's response as the message body
+          agentResponse.text,
           menuButtonLabel,
           MENU_URL
         );
         console.log(`✅ Response with menu button sent to ${userId} (button: "${menuButtonLabel}")`);
+      } else if (agentResponse.sendReservationButton) {
+        console.log(`📅 Sending response with reservation button to ${userId}`);
+        const reservationButtonLabel = await generateText(
+          mastra,
+          'Button text for "Book a table" (2-3 words max)',
+          userLanguage,
+          'Button that opens the online reservation page'
+        );
+        await whatsappClient.sendCTAUrlButton(
+          userId,
+          agentResponse.text,
+          reservationButtonLabel,
+          RESERVATION_URL
+        );
+        console.log(`✅ Response with reservation button sent to ${userId} (button: "${reservationButtonLabel}")`);
+      } else if (agentResponse.sendDeliveryButton) {
+        console.log(`🚚 Sending response with delivery button to ${userId}`);
+        const deliveryButtonLabel = await generateText(
+          mastra,
+          'Button text for "Order delivery" (2-3 words max)',
+          userLanguage,
+          'Button that opens the delivery page'
+        );
+        await whatsappClient.sendCTAUrlButton(
+          userId,
+          agentResponse.text,
+          deliveryButtonLabel,
+          DELIVERY_URL
+        );
+        console.log(`✅ Response with delivery button sent to ${userId} (button: "${deliveryButtonLabel}")`);
+      } else if (agentResponse.sendTakeawayButton) {
+        console.log(`🥡 Sending response with takeaway button to ${userId}`);
+        const takeawayButtonLabel = await generateText(
+          mastra,
+          'Button text for "Order takeaway" (2-3 words max)',
+          userLanguage,
+          'Button that opens the takeaway order page'
+        );
+        await whatsappClient.sendCTAUrlButton(
+          userId,
+          agentResponse.text,
+          takeawayButtonLabel,
+          TAKEAWAY_URL
+        );
+        console.log(`✅ Response with takeaway button sent to ${userId} (button: "${takeawayButtonLabel}")`);
+      } else if (agentResponse.sendGiftCardButton) {
+        console.log(`🎁 Sending response with gift card button to ${userId}`);
+        const giftCardButtonLabel = await generateText(
+          mastra,
+          'Button text for "Buy gift card" (2-3 words max)',
+          userLanguage,
+          'Button that opens the gift card purchase page'
+        );
+        await whatsappClient.sendCTAUrlButton(
+          userId,
+          agentResponse.text,
+          giftCardButtonLabel,
+          GIFT_CARD_URL
+        );
+        console.log(`✅ Response with gift card button sent to ${userId} (button: "${giftCardButtonLabel}")`);
       } else {
-        // Send regular text message
+        // Send regular text message (no button needed)
         await whatsappClient.sendTextMessage(userId, agentResponse.text);
         console.log(`✅ Text response sent to ${userId}`);
       }
@@ -466,10 +869,10 @@ async function processIncomingMessage(
         console.log(`📍 User requested location, sending location pin to ${userId}`);
         await whatsappClient.sendLocationMessage(
           userId,
-          CARIBBEAN_FOOD_LOCATION.latitude,
-          CARIBBEAN_FOOD_LOCATION.longitude,
-          CARIBBEAN_FOOD_LOCATION.name,
-          CARIBBEAN_FOOD_LOCATION.address
+          JAVA_BLEUE_LOCATION.latitude,
+          JAVA_BLEUE_LOCATION.longitude,
+          JAVA_BLEUE_LOCATION.name,
+          JAVA_BLEUE_LOCATION.address
         );
         console.log(`✅ Location pin sent to ${userId}`);
       }
@@ -496,7 +899,7 @@ async function processIncomingMessage(
       try {
         await whatsappClient.sendTextMessage(
           message.from,
-          "Je m'excuse, mais je rencontre un problème technique. Veuillez réessayer dans un moment, ou nous contacter directement:\n\n📞 06 96 33 20 35\n📧 caribbeanfoodnord@gmail.com"
+          "Je m'excuse, mais je rencontre un problème technique. Veuillez réessayer dans un moment, ou nous contacter directement:\n\n📞 04 77 21 80 68\n🌐 https://www.restaurant-lajavableue.fr/"
         );
       } catch (finalError) {
         console.error('❌ Failed to send fallback error message:', finalError);

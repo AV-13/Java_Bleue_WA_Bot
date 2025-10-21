@@ -1,7 +1,7 @@
 {
-  "name": "Caribbean_Food_Carbet",
+  "name": "La_Java_Bleue_Bot",
   "version": "2.0.0",
-  "description": "WhatsApp chatbot for Caribbean Food Carbet restaurant in Martinique",
+  "description": "WhatsApp chatbot for La Java Bleue restaurant in Saint-Etienne",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -16,10 +16,12 @@
     "whatsapp",
     "bot",
     "restaurant",
-    "caribbean-food",
-    "martinique"
+    "java-bleue",
+    "saint-etienne",
+    "viande",
+    "burgers"
   ],
-  "author": "Caribbean Food Carbet",
+  "author": "La Java Bleue",
   "dependencies": {
     "@ai-sdk/openai": "^2.0.52",
     "@mastra/core": "^0.21.0",

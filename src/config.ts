@@ -1,59 +1,68 @@
 /**
- * Caribbean Food Carbet Bot Configuration
+ * La Java Bleue Bot Configuration
  * Contains all restaurant information and bot settings
  */
 
 export const RESTAURANT_INFO = {
-  name: 'Caribbean Food Carbet',
-  slogan: 'Un voyage de saveurs entre terre et mer, au coeur de la Caraïbes',
+  name: 'La Java Bleue',
+  slogan: 'Restaurant à viande et burgers - Ouvert 7j/7 en continu',
 
   contact: {
-    address: 'Le Coin, Le Carbet 97221, Martinique',
-    phone: '06 96 33 20 35',
+    address: '2 cours Fauriel, 42100 Saint-Etienne',
+    phone: '04 77 21 80 68',
     emails: {
-      reservations: 'caribbeanfoodnord@gmail.com',
-      general: 'caribbeanfoodnord@gmail.com',
+      reservations: 'contact@restaurant-lajavableue.fr',
+      general: 'contact@restaurant-lajavableue.fr',
     },
-    instagram: '@caribbean_food_972',
-    instagramUrl: 'https://www.instagram.com/caribbean_food_972/?hl=fr',
+    facebook: 'https://www.facebook.com/lajavableuesaintetienne/',
+    website: 'https://www.restaurant-lajavableue.fr/',
   },
 
   hours: {
-    monday: '12h - 15h',
-    tuesday: 'Fermé',
-    wednesday: '12h - 15h',
-    thursday: '12h - 15h',
-    friday: '12h - 22h30',
-    saturday: '12h - 22h30',
-    sunday: '12h - 15h',
-    closed: ['Tuesday'],
+    monday: '11h30 - 21h30',
+    tuesday: '11h30 - 21h30',
+    wednesday: '11h30 - 21h30',
+    thursday: '11h30 - 21h30',
+    friday: '11h30 - 21h30',
+    saturday: '11h30 - 21h30',
+    sunday: '11h30 - 21h30',
+    closed: [],
   },
 
   policies: {
-    dressCode: 'Décontractée - tenue de plage acceptée',
-    reservationPhone: '06 96 33 20 35',
-    reservationEmail: 'caribbeanfoodnord@gmail.com',
+    dressCode: 'Décontractée',
+    reservationPhone: '04 77 21 80 68',
+    reservationEmail: 'contact@restaurant-lajavableue.fr',
   },
 
   dining: {
-    cuisineType: 'Cuisine caribéenne et créole, fruits de mer, poissons frais',
+    cuisineType: 'Restaurant à viande et burgers, cuisine de marché',
     specialties: [
-      'Fruits de mer frais',
-      'Poissons grillés',
-      'Spécialités créoles',
-      'Cocktails exotiques',
+      'Viandes françaises (Charolaise, Salers, Limousine, Aubrac)',
+      'Burgers au bœuf charolais élevé en Haute-Loire',
+      'Frites maisons à la graisse de bœuf',
+      'Sauces maisons (tartare, sarasson, Fourme de Montbrison)',
+      'Fromages locaux BIO',
+      'Plat du jour en semaine',
     ],
-    atmosphere: 'Restaurant en bord de mer avec vue sur l\'océan',
+    atmosphere: 'Bistrot convivial avec ambiance hors du temps',
   },
 
   location: {
-    description: 'En bord de mer au Coin, Le Carbet, Martinique',
-    beachFront: true,
+    description: '2 cours Fauriel à Saint-Etienne',
+    beachFront: false,
   },
 
   menu: {
-    url: 'https://www.canva.com/design/DAGJ58x1g9o/WOx7t3_GavjWjygcZ3TBIw/view?utm_content=DAGJ58x1g9o&utm_campaign=designshare&utm_medium=link&utm_source=viewer#2',
-    type: 'Menu unique avec spécialités caribéennes et créoles',
+    url: 'https://www.restaurant-lajavableue.fr/la-carte-de-la-java-bleue/',
+    type: 'Carte avec viandes et burgers, plats et desserts du jour',
+  },
+
+  links: {
+    reservations: 'https://bookings.zenchef.com/results?rid=348636&pid=1001',
+    delivery: 'https://www.restaurant-lajavableue.fr/?livraison',
+    takeaway: 'https://ccdl.zenchef.com/articles?rid=348636',
+    giftCards: 'https://lajavableue.bonkdo.com/fr/',
   },
 };
 

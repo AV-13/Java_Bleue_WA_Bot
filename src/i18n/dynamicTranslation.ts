@@ -4,7 +4,7 @@
  */
 
 import { Mastra } from '@mastra/core';
-import { getCaribbeanFoodAgent } from '../agent/mastra.js';
+import { getJavaBleuAgent } from '../agent/mastra.js';
 
 /**
  * Generate translated text using AI for any language
@@ -23,17 +23,50 @@ export async function generateText(
   context?: string
 ): Promise<string> {
   try {
-    const agent = getCaribbeanFoodAgent(mastra);
+    const agent = getJavaBleuAgent(mastra);
 
     const contextInfo = context ? `\n\nContext: ${context}` : '';
 
-    const prompt = `You are a professional translator for Caribbean Food Carbet, a beachside Caribbean restaurant in Martinique.
+    // Map common ISO codes to full language names for clarity
+    const languageMap: Record<string, string> = {
+      'fr': 'French',
+      'en': 'English',
+      'es': 'Spanish',
+      'de': 'German',
+      'it': 'Italian',
+      'pt': 'Portuguese',
+      'nl': 'Dutch',
+      'pl': 'Polish',
+      'ru': 'Russian',
+      'ja': 'Japanese',
+      'zh': 'Chinese',
+      'ar': 'Arabic',
+      'no': 'Norwegian',
+      'sv': 'Swedish',
+      'da': 'Danish',
+      'fi': 'Finnish',
+      'cs': 'Czech',
+      'el': 'Greek',
+      'tr': 'Turkish',
+      'ko': 'Korean',
+    };
 
-Generate ONLY the following text in ${language} language. Return ONLY the translated text with no explanations, quotes, or additional formatting.
+    const languageName = languageMap[language] || language;
+
+    const prompt = `You are a professional translator for La Java Bleue, a French meat and burger restaurant in Saint-Etienne.
+
+IMPORTANT: Generate ONLY the following text in ${languageName} (language code: ${language}).
+Return ONLY the translated text with NO explanations, quotes, or additional formatting.
+The translation MUST be in ${languageName}, not in French or English.
+
+Examples:
+- If language is Norwegian (no): translate to Norwegian, NOT French
+- If language is Polish (pl): translate to Polish, NOT French
+- If language is Spanish (es): translate to Spanish, NOT French
 
 Text to generate: ${textKey}${contextInfo}
 
-Translation:`;
+Translation in ${languageName}:`;
 
     const result = await agent.generate(prompt);
     const generatedText = (result.text || '').trim();
@@ -131,9 +164,19 @@ export async function generateReservationConfirmation(
   }
 ): Promise<string> {
   try {
-    const agent = getCaribbeanFoodAgent(mastra);
+    const agent = getJavaBleuAgent(mastra);
 
-    const prompt = `Generate a reservation confirmation message in ${language} for a restaurant WhatsApp bot.
+    // Map ISO codes to full language names
+    const languageMap: Record<string, string> = {
+      'fr': 'French', 'en': 'English', 'es': 'Spanish', 'de': 'German', 'it': 'Italian',
+      'pt': 'Portuguese', 'nl': 'Dutch', 'pl': 'Polish', 'ru': 'Russian', 'ja': 'Japanese',
+      'zh': 'Chinese', 'ar': 'Arabic', 'no': 'Norwegian', 'sv': 'Swedish', 'da': 'Danish',
+      'fi': 'Finnish', 'cs': 'Czech', 'el': 'Greek', 'tr': 'Turkish', 'ko': 'Korean',
+    };
+
+    const languageName = languageMap[language] || language;
+
+    const prompt = `Generate a reservation confirmation message in ${languageName} (language code: ${language}) for a restaurant WhatsApp bot.
 
 Include:
 1. "Perfect! Here's the link to complete your reservation:"
@@ -215,19 +258,48 @@ export async function generateListLabels(
   language: string
 ): Promise<Array<{ id: string; label: string }>> {
   try {
-    const agent = getCaribbeanFoodAgent(mastra);
+    const agent = getJavaBleuAgent(mastra);
 
-    const itemsList = items.map(item => `- ${item.englishLabel}`).join('\n');
+    // Map ISO codes to full language names
+    const languageMap: Record<string, string> = {
+      'fr': 'French', 'en': 'English', 'es': 'Spanish', 'de': 'German', 'it': 'Italian',
+      'pt': 'Portuguese', 'nl': 'Dutch', 'pl': 'Polish', 'ru': 'Russian', 'ja': 'Japanese',
+      'zh': 'Chinese', 'ar': 'Arabic', 'no': 'Norwegian', 'sv': 'Swedish', 'da': 'Danish',
+      'fi': 'Finnish', 'cs': 'Czech', 'el': 'Greek', 'tr': 'Turkish', 'ko': 'Korean',
+    };
 
-    const prompt = `Translate these list items to ${language}. Return ONLY the translations, one per line, in the same order. No numbering, no extra text.
+    const languageName = languageMap[language] || language;
+
+    const itemsList = items.map(item => `${item.englishLabel}`).join('\n');
+
+    const prompt = `Translate these list items to ${languageName} (language code: ${language}). Return ONLY the translations, one per line, in the same order.
+
+IMPORTANT:
+- Translate to ${languageName}, NOT to French or English
+- No dashes, no hyphens, no bullet points
+- No numbering, no extra text
+- No punctuation at the end
+- Just the clean translated text in ${languageName}
 
 Items to translate:
 ${itemsList}
 
-Translations:`;
+Translations in ${languageName}:`;
 
     const result = await agent.generate(prompt);
-    const translations = (result.text || '').trim().split('\n').filter((line: string) => line.trim());
+    const translations = (result.text || '')
+      .trim()
+      .split('\n')
+      .filter((line: string) => line.trim())
+      .map((line: string) => {
+        // Clean up any remaining dashes, hyphens, or bullet points
+        let cleaned = line.trim();
+        // Remove leading dashes, hyphens, asterisks, or numbers with dots
+        cleaned = cleaned.replace(/^[-•*\d]+\.?\s*/, '');
+        // Remove trailing punctuation except question marks and exclamation marks
+        cleaned = cleaned.replace(/[.,;:]$/, '');
+        return cleaned;
+      });
 
     // Map translations back to items
     return items.map((item, index) => ({
