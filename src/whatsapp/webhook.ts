@@ -130,16 +130,17 @@ function normalizeLanguageCode(language: string): string {
  */
 async function detectUserIntent(
   userMessage: string,
-  mastra: Mastra
+  mastra: Mastra,
+  isNewUser: boolean = false
 ): Promise<string | null> {
   try {
     const agent = getJavaBleuAgent(mastra);
 
     const prompt = `Analyze this user message and determine their intent. Choose ONE option from this list:
 
-1. "greeting" - General greeting without specific request (examples: "Hello", "Bonjour", "Hi", "Hola")
+1. "greeting" - ONLY a simple greeting without question or request (examples: "Hello", "Bonjour", "Hi", "Hola", "Hey", "Salut")
 2. "positive_response" - Positive answer to a question (examples: "Yes", "Oui", "Si", "Sure", "D'accord", "OK", "Yeah", "Yep", "Bien sûr", "Absolument", "Volontiers", "With pleasure")
-3. "show_main_menu" - Wants to see the main options/services menu (examples: "Show options", "What can you do?", "Voir les options", "Que proposez-vous?", "Menu principal", "Options", "Services")
+3. "show_main_menu" - EXPLICITLY wants to see options/capabilities/what you can do (examples: "What can you do?", "Que peux-tu faire?", "Quelles sont les options?", "Show me the options", "Capabilities", "Services disponibles", "Menu des actions", "Qu'est-ce que tu proposes?")
 4. "action_view_menu" - Wants to see the FOOD menu/carte (examples: "Show me the menu", "Je veux voir la carte", "Menu please", "Food menu")
 5. "action_reserve" - Wants to book/reserve a table (examples: "I want to reserve", "Réserver une table", "Book a table")
 6. "action_hours" - Wants to know opening hours (examples: "What time are you open?", "Horaires d'ouverture", "When are you open?")
@@ -149,21 +150,28 @@ async function detectUserIntent(
 10. "action_takeaway" - Wants to order takeaway (examples: "À emporter", "Takeaway", "Order to go")
 11. "action_gift_cards" - Wants information about gift cards (examples: "Bon cadeau", "Gift card", "Chèque cadeau")
 12. "action_shop" - Wants to see the shop (examples: "Boutique", "Shop", "Buy something")
-13. "other" - Other messages that don't fit above categories
+13. "other" - Other messages that don't fit above categories (questions, conversations, etc.)
 
-CRITICAL RULE FOR ITINERARIES:
-- If the message asks HOW TO GET to the restaurant FROM a specific starting point, respond "other" (NOT "action_location")
-- Examples that MUST be "other": "Comment venir depuis la gare?", "How do I get there from X?", "Itinéraire depuis X", "Je pars de X, comment venir?"
-- Only use "action_location" if they ask for the address WITHOUT mentioning a starting point or how to get there
+CRITICAL RULES:
+1. ITINERARIES: If the message asks HOW TO GET to the restaurant FROM a specific starting point, respond "other" (NOT "action_location")
+   - Examples that MUST be "other": "Comment venir depuis la gare?", "How do I get there from X?", "Itinéraire depuis X"
+   - Only use "action_location" if they ask for address WITHOUT mentioning how to get there
+
+2. GREETINGS: If the message contains a greeting BUT ALSO a question/request, respond with the REQUEST intent, NOT "greeting"
+   - "Bonjour, vous êtes ouvert ?" → "action_hours" (NOT "greeting")
+   - "Hi, do you have the menu?" → "action_view_menu" (NOT "greeting")
+   - "Hello, what can you do?" → "show_main_menu" (NOT "greeting")
+   - "Bonjour" alone → "greeting"
+
+3. SHOW_MAIN_MENU: Only use this if the user EXPLICITLY asks about your capabilities/options/what you can do
+   - "Que peux-tu faire?" → "show_main_menu"
+   - "What are my options?" → "show_main_menu"
+   - "Bonjour, c'est quoi vos horaires?" → "action_hours" (NOT "show_main_menu")
 
 IMPORTANT:
 - Only respond with ONE of these exact strings
-- If the message is a GENERAL greeting without a specific request, respond "greeting"
-- If the message is a POSITIVE response (yes, oui, ok, etc.), respond "positive_response"
-- If the message asks to see the SERVICES/OPTIONS (not food), respond "show_main_menu"
-- If the message asks for a SPECIFIC action, respond with the action ID (like "action_view_menu")
-- If asking for ITINERARY or HOW TO GET THERE from a starting point, respond "other"
 - If unclear or doesn't match, respond "other"
+- Questions about the restaurant should be "other" to let the AI agent answer naturally
 
 User message: "${userMessage}"
 
@@ -849,13 +857,19 @@ async function processIncomingMessage(
     // For text messages, detect user intent to provide direct responses
     if (!isButtonClick) {
       console.log(`🔍 Detecting intent for text message: "${userMessage}"`);
-      const detectedIntent = await detectUserIntent(userMessage, mastra);
+      const detectedIntent = await detectUserIntent(userMessage, mastra, isNewUser);
 
       if (detectedIntent) {
-        if (detectedIntent === 'greeting' || detectedIntent === 'show_main_menu') {
-          // Show main menu for general greetings or explicit menu requests
+        // RESTRICTED MENU TRIGGER: Only show menu in very specific cases
+        if (detectedIntent === 'show_main_menu') {
+          // User EXPLICITLY asked "what can you do?" or "show options"
           await sendMainMenu(userId, whatsappClient, detectedLanguage, mastra);
-          console.log(`✅ Main menu sent for ${detectedIntent} - ${userId}`);
+          console.log(`✅ Main menu sent for explicit request - ${userId}`);
+          return;
+        } else if (detectedIntent === 'greeting' && isNewUser) {
+          // ONLY for brand new users saying hello for the first time
+          await sendMainMenu(userId, whatsappClient, detectedLanguage, mastra);
+          console.log(`✅ Main menu sent for new user greeting - ${userId}`);
           return;
         } else if (detectedIntent === 'positive_response') {
           // User said YES! Trigger reservation flow
