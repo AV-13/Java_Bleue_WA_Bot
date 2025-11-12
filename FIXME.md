@@ -12,6 +12,11 @@
 - Contact : pareil trop robot.
 - Livraison : faites vous livrer nos plats partout où vous le souhaitez.
 - Enlever les descriptions c'est inutiles
+- Revoir tous les textes supposément écrit en dur => plus conversationnel, plus vendeur, mieux écrits
+- Privatisation : contact tel actuellement, fouiller pour trouver un mail ?
+- Bus et metro : réponse pas gérée. INCA aussi
+- Garderie centre commercial à proximité : réponse pas gérée.
+- Message pourri voir slack Anthony : "Nous avons hâte de vous offrir une expérience inoubliable bientôt !"
 
 QA :
 
