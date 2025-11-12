@@ -569,10 +569,10 @@ async function handleMainMenuAction(
         break;
 
       case 'action_hours':
-        // Send opening hours info with proactive reservation suggestion - professional and clear with LINE BREAKS
+        // Send opening hours in a natural, conversational way with proactive suggestion
         const hoursMessageRaw = await generateText(
           mastra,
-          'Share our opening hours with proactive reservation suggestion. Structure:\n1. Brief opening phrase (e.g., "Our hours:")\n2. NEW LINE then hours: "🕐 11:30 - 21:30"\n3. NEW LINE: "Open 7 days a week, continuous service"\n4. NEW LINE then proactive suggestion: "Would you like to book a table?"\n\nIMPORTANT: Use line breaks (\\n) for readability. Tone: professional, clear, inviting.',
+          'Share our opening hours in a warm, conversational way with proactive reservation suggestion. Write naturally like you\'re chatting with a friend. Mention we\'re open every day from 11:30 to 21:30, continuous service. Add an enthusiastic comment about it being perfect for lunch or dinner. Then naturally suggest booking. Around 25-35 words total. Be warm and engaging, not robotic. Use line breaks (\\n) to separate ideas but avoid bullet points.',
           language
         );
         const hoursMessage = processFormattedText(hoursMessageRaw);
@@ -580,7 +580,7 @@ async function handleMainMenuAction(
         break;
 
       case 'action_location':
-        // Send location pin with proactive follow-up message
+        // Send location pin with natural conversational follow-up
         await whatsappClient.sendLocationMessage(
           userId,
           JAVA_BLEUE_LOCATION.latitude,
@@ -589,20 +589,20 @@ async function handleMainMenuAction(
           JAVA_BLEUE_LOCATION.address
         );
 
-        // Send proactive reservation prompt immediately after location
+        // Send warm, conversational follow-up with location context and transport info
         const locationFollowUp = await generateText(
           mastra,
-          'After showing location, ask if they would like to reserve a table. Be proactive and inviting. Around 8-10 words. Example: "Would you like to reserve a table with us?"',
+          'After showing location pin, write a warm message mentioning we\'re easy to reach by tram (T1/T3) or bus, with parking nearby. Then naturally suggest booking a table. Be conversational and friendly, like chatting with a friend. Around 20-30 words. Avoid bullet points, write in flowing sentences.',
           language
         );
         await whatsappClient.sendTextMessage(userId, locationFollowUp);
         break;
 
       case 'action_contact':
-        // Send contact info with proactive reservation suggestion - professional and well formatted with LINE BREAKS
+        // Send contact info in a warm, conversational way
         const contactMessageRaw = await generateText(
           mastra,
-          'Share contact information with proactive reservation suggestion. Structure:\n1. Brief opening like "Contact information:"\n2. NEW LINE then Phone: 📞 04 77 21 80 68\n3. NEW LINE then Website: 🌐 https://www.restaurant-lajavableue.fr/\n4. NEW LINE then proactive suggestion: "You can also reserve your table directly online. Interested?"\n\nIMPORTANT: Use line breaks (\\n) for readability. Tone: professional, helpful, inviting.',
+          'Share our contact info in a warm, helpful way. Start with a friendly intro, then naturally mention our phone (04 77 21 80 68) and website (https://www.restaurant-lajavableue.fr/). Then suggest they can also book online easily. Write in flowing sentences, not bullet points. Be conversational like you\'re helping a friend. Around 25-35 words. Use emojis naturally (📞 🌐). Use line breaks (\\n) to separate ideas but keep it flowing and human.',
           language
         );
         const contactMessage = processFormattedText(contactMessageRaw);
@@ -610,10 +610,10 @@ async function handleMainMenuAction(
         break;
 
       case 'action_delivery':
-        // Send delivery link with button - professional message
+        // Send delivery link with button - warm and conversational
         const deliveryMessage = await generateText(
           mastra,
-          'Professional message for delivery service. Mention that our cuisine is available for home delivery. Around 10-12 words. Tone: refined, service-oriented, and professional.',
+          'Warm message for delivery service. Write conversationally - mention you can enjoy our cuisine at home with delivery. Be enthusiastic and friendly, not formal. Around 15-20 words. Write in flowing sentences like chatting with a friend.',
           language
         );
         const deliveryButtonLabel = await generateText(
@@ -630,10 +630,10 @@ async function handleMainMenuAction(
         break;
 
       case 'action_takeaway':
-        // Send takeaway link with button - professional message
+        // Send takeaway link with button - warm and conversational
         const takeawayMessage = await generateText(
           mastra,
-          'Professional message for takeaway service. Mention that our dishes are available for takeaway. Around 10-12 words. Tone: refined, service-oriented, and professional.',
+          'Warm message for takeaway service. Write conversationally - mention they can order and pick up. Be friendly and welcoming, not formal. Around 15-20 words. Write in flowing sentences like chatting with a friend.',
           language
         );
         const takeawayButtonLabel = await generateText(
@@ -650,10 +650,10 @@ async function handleMainMenuAction(
         break;
 
       case 'action_gift_cards':
-        // Send gift cards link with button - professional message with details
+        // Send gift cards link with button - warm and conversational
         const giftCardMessageRaw = await generateText(
           mastra,
-          'Professional message for gift cards. Structure:\n1. Present gift cards as an elegant gifting option\n2. NEW LINE then mention: From 50€, valid for 365 days\n3. NEW LINE then closing: "Perfect for any occasion."\n\nIMPORTANT: Use line breaks (\\n) for readability. Tone: refined, professional, and courteous. Around 15-18 words total.',
+          'Warm message for gift cards. Write conversationally about how gift cards make great gifts for food lovers. Naturally mention they start at 50€ and are valid for a year. Add that they\'re perfect for any occasion. Be friendly and enthusiastic, not formal. Around 25-30 words. Write in flowing sentences, avoid bullet points. Use line breaks (\\n) to separate ideas but keep it conversational.',
           language
         );
         const giftCardMessage = processFormattedText(giftCardMessageRaw);
@@ -671,10 +671,10 @@ async function handleMainMenuAction(
         break;
 
       case 'action_shop':
-        // Send shop link with button - professional message mentioning Loire recipes book with details
+        // Send shop link with button - warm and conversational
         const shopMessageRaw = await generateText(
           mastra,
-          'Professional message for our shop. Structure:\n1. Invite them to discover our shop\n2. NEW LINE then present: "Loire Recipes Book" by 25 local chefs (24.90€)\n3. NEW LINE then mention: "Celebrating local gastronomy."\n\nIMPORTANT: Use line breaks (\\n) for readability. Tone: refined, professional, and cultured. Around 15-18 words total.',
+          'Warm message for our shop. Write conversationally about our "Loire Recipes Book" with 25 recipes from 25 local chefs (24.90€). Mention it celebrates local gastronomy. Be enthusiastic about local food culture, not formal. Around 25-30 words. Write in flowing sentences, avoid bullet points. Use line breaks (\\n) to separate ideas but keep it natural and engaging.',
           language
         );
         const shopMessage = processFormattedText(shopMessageRaw);
