@@ -394,15 +394,9 @@ async function sendMainMenu(
 
     // Define menu items in English (to be translated)
     const menuItems = [
-      { id: 'action_view_menu', englishLabel: 'View our menu', description: 'Dishes, wines & prices' },
-      { id: 'action_reserve', englishLabel: 'Book a table', description: 'Choose date & time online' },
-      { id: 'action_hours', englishLabel: 'Opening hours', description: '7 days a week, 11:30-21:30' },
-      { id: 'action_location', englishLabel: 'Location & Address', description: 'Find us in Saint-Etienne' },
-      { id: 'action_contact', englishLabel: 'Contact us', description: 'Phone & website' },
       { id: 'action_delivery', englishLabel: 'Delivery', description: 'Get our food delivered home' },
       { id: 'action_takeaway', englishLabel: 'Takeaway', description: 'Order and pick up' },
-      { id: 'action_gift_cards', englishLabel: 'Gift cards', description: 'From 50€, valid 1 year' },
-      { id: 'action_shop', englishLabel: 'Shop', description: 'Loire recipes book & more' },
+      { id: 'action_location', englishLabel: 'Location & Address', description: 'Find us in Saint-Etienne' },
     ];
 
     // Translate menu item labels using AI

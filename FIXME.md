@@ -1,0 +1,4 @@
+- API Zenchef
+- Pas mettre l'URL du site dans contact
+- Enlever label inutiles : on garde livraison a emporter location.
+- Scinder message proactif.
