@@ -394,9 +394,15 @@ async function sendMainMenu(
 
     // Define menu items in English (to be translated)
     const menuItems = [
+      { id: 'action_view_menu', englishLabel: 'View our menu' },
+      { id: 'action_reserve', englishLabel: 'Book a table' },
+      { id: 'action_hours', englishLabel: 'Opening hours' },
+      { id: 'action_location', englishLabel: 'Location & Address', description: 'Find us in Saint-Etienne' },
+      { id: 'action_contact', englishLabel: 'Contact us' },
       { id: 'action_delivery', englishLabel: 'Delivery', description: 'Get our food delivered home' },
       { id: 'action_takeaway', englishLabel: 'Takeaway', description: 'Order and pick up' },
-      { id: 'action_location', englishLabel: 'Location & Address', description: 'Find us in Saint-Etienne' },
+      { id: 'action_gift_cards', englishLabel: 'Gift cards' },
+      { id: 'action_shop', englishLabel: 'Shop' },
     ];
 
     // Translate menu item labels using AI
@@ -406,19 +412,33 @@ async function sendMainMenu(
       language
     );
 
-    // Translate descriptions
-    const translatedDescriptions = await generateListLabels(
-      mastra,
-      menuItems.map(item => ({ id: item.id, englishLabel: item.description })),
-      language
-    );
+    // Translate descriptions only for items that have descriptions
+    const itemsWithDescriptions = menuItems.filter(item => item.description);
+    const translatedDescriptions = itemsWithDescriptions.length > 0
+      ? await generateListLabels(
+          mastra,
+          itemsWithDescriptions.map(item => ({ id: item.id, englishLabel: item.description! })),
+          language
+        )
+      : [];
 
-    // Build rows with translated labels and descriptions
-    const rows = menuItems.map((item, index) => ({
-      id: item.id,
-      title: translatedLabels[index]?.label || item.englishLabel,
-      description: translatedDescriptions[index]?.label || item.description,
-    }));
+    // Build rows with translated labels and descriptions (only where applicable)
+    const rows = menuItems.map((item, index) => {
+      const row: { id: string; title: string; description?: string } = {
+        id: item.id,
+        title: translatedLabels[index]?.label || item.englishLabel,
+      };
+
+      // Add description only if the item has one
+      if (item.description) {
+        const descIndex = itemsWithDescriptions.findIndex(i => i.id === item.id);
+        if (descIndex >= 0) {
+          row.description = translatedDescriptions[descIndex]?.label || item.description;
+        }
+      }
+
+      return row;
+    });
 
     // Generate body text and button text
     // Professional, warm, and conversion-focused welcome message
