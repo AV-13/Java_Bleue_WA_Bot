@@ -527,10 +527,10 @@ async function handleMainMenuAction(
 
     switch (actionId) {
       case 'action_view_menu':
-        // Send menu link with button - professional and inviting message
+        // Send menu link with button - professional and inviting message with proactive follow-up
         const menuMessage = await generateText(
           mastra,
-          'Professional invitation to view our menu. Mention our culinary offerings in an elegant way. Around 10-12 words. Tone: refined, appetizing, and professional - like a quality restaurant presenting their carte.',
+          'Professional invitation to view our menu with proactive reservation suggestion. Structure: First, invite them to view the menu (elegant, appetizing). Then add a proactive follow-up to suggest reservation. Total around 18-22 words. Example: "Discover our culinary offerings with our complete menu. Tempted? You can reserve your table directly online or by phone."',
           language
         );
         console.log("generated menu message:", menuMessage);
@@ -546,22 +546,13 @@ async function handleMainMenuAction(
           menuButtonLabel,
           MENU_URL
         );
-
-        // PROACTIVE: Follow up with reservation prompt
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const menuFollowUp = await generateText(
-          mastra,
-          'After showing menu, proactively suggest reservation. Be inviting and conversion-focused. Around 8-10 words. Example: "Tempted? Would you like to reserve a table?"',
-          language
-        );
-        await whatsappClient.sendTextMessage(userId, menuFollowUp);
         break;
 
       case 'action_reserve':
-        // Send reservation info with button - professional, welcoming and enthusiastic
+        // Send reservation info with button - professional, welcoming and enthusiastic with warm closing
         const reserveMessage = await generateText(
           mastra,
-          'Enthusiastic and professional invitation to reserve. Express excitement about welcoming them and mention the ease of booking. Around 12-15 words. Tone: warm, inviting, and eager - like a maître d\'hôtel delighted to serve.',
+          'Enthusiastic invitation to reserve with warm closing. Structure: Express excitement about welcoming them and ease of booking, then add warm closing expressing anticipation. Total around 20-25 words. Example: "We\'re delighted to welcome you! Reserve your table easily online. We look forward to offering you an unforgettable experience soon!"',
           language
         );
         const reserveButtonLabel = await generateText(
@@ -575,39 +566,21 @@ async function handleMainMenuAction(
           reserveButtonLabel,
           RESERVATION_URL
         );
-
-        // Add a warm closing message after reservation link
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const reserveClosing = await generateText(
-          mastra,
-          'After sending reservation link, add a warm closing that expresses anticipation. Around 8-10 words. Example: "We look forward to welcoming you soon!"',
-          language
-        );
-        await whatsappClient.sendTextMessage(userId, reserveClosing);
         break;
 
       case 'action_hours':
-        // Send opening hours info - professional and clear with LINE BREAKS
+        // Send opening hours info with proactive reservation suggestion - professional and clear with LINE BREAKS
         const hoursMessageRaw = await generateText(
           mastra,
-          'Share our opening hours in a professional, clear format. Structure:\n1. Brief opening phrase (e.g., "Our hours:")\n2. NEW LINE then hours: "🕐 11:30 - 21:30"\n3. NEW LINE: "Open 7 days a week, continuous service"\n\nIMPORTANT: Use line breaks (\\n) for readability. Tone: professional, clear, and courteous.',
+          'Share our opening hours with proactive reservation suggestion. Structure:\n1. Brief opening phrase (e.g., "Our hours:")\n2. NEW LINE then hours: "🕐 11:30 - 21:30"\n3. NEW LINE: "Open 7 days a week, continuous service"\n4. NEW LINE then proactive suggestion: "Would you like to book a table?"\n\nIMPORTANT: Use line breaks (\\n) for readability. Tone: professional, clear, inviting.',
           language
         );
         const hoursMessage = processFormattedText(hoursMessageRaw);
         await whatsappClient.sendTextMessage(userId, hoursMessage);
-
-        // PROACTIVE: Follow up with reservation prompt
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const hoursFollowUp = await generateText(
-          mastra,
-          'After showing hours, proactively suggest booking. Be inviting. Around 8-10 words. Example: "Would you like to book a table?"',
-          language
-        );
-        await whatsappClient.sendTextMessage(userId, hoursFollowUp);
         break;
 
       case 'action_location':
-        // Send location pin directly
+        // Send location pin with proactive follow-up message
         await whatsappClient.sendLocationMessage(
           userId,
           JAVA_BLEUE_LOCATION.latitude,
@@ -616,8 +589,7 @@ async function handleMainMenuAction(
           JAVA_BLEUE_LOCATION.address
         );
 
-        // PROACTIVE: Follow up with reservation prompt
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Small delay for better UX
+        // Send proactive reservation prompt immediately after location
         const locationFollowUp = await generateText(
           mastra,
           'After showing location, ask if they would like to reserve a table. Be proactive and inviting. Around 8-10 words. Example: "Would you like to reserve a table with us?"',
@@ -627,23 +599,14 @@ async function handleMainMenuAction(
         break;
 
       case 'action_contact':
-        // Send contact info - professional and well formatted with LINE BREAKS
+        // Send contact info with proactive reservation suggestion - professional and well formatted with LINE BREAKS
         const contactMessageRaw = await generateText(
           mastra,
-          'Share contact information in a professional way. Structure:\n1. Brief opening like "Contact information:" or "How to reach us:"\n2. NEW LINE then Phone: 📞 04 77 21 80 68\n3. NEW LINE then Website: 🌐 https://www.restaurant-lajavableue.fr/\n\nIMPORTANT: Use line breaks (\\n) for readability. Tone: professional, clear, and helpful.',
+          'Share contact information with proactive reservation suggestion. Structure:\n1. Brief opening like "Contact information:"\n2. NEW LINE then Phone: 📞 04 77 21 80 68\n3. NEW LINE then Website: 🌐 https://www.restaurant-lajavableue.fr/\n4. NEW LINE then proactive suggestion: "You can also reserve your table directly online. Interested?"\n\nIMPORTANT: Use line breaks (\\n) for readability. Tone: professional, helpful, inviting.',
           language
         );
         const contactMessage = processFormattedText(contactMessageRaw);
         await whatsappClient.sendTextMessage(userId, contactMessage);
-
-        // PROACTIVE: Follow up with reservation prompt
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const contactFollowUp = await generateText(
-          mastra,
-          'After showing contact, suggest online reservation. Be proactive. Around 10-12 words. Example: "You can also reserve your table directly online. Interested?"',
-          language
-        );
-        await whatsappClient.sendTextMessage(userId, contactFollowUp);
         break;
 
       case 'action_delivery':
