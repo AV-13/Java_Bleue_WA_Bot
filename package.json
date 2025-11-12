@@ -27,17 +27,17 @@
     "@mastra/core": "^0.21.0",
     "@supabase/supabase-js": "^2.75.0",
     "@types/express": "^5.0.3",
+    "@types/node": "^20.19.21",
     "axios": "^1.12.2",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "openai": "^6.3.0"
+    "openai": "^6.3.0",
+    "typescript": "^5.5.3"
   },
   "devDependencies": {
-    "@types/node": "^20.19.21",
     "@types/qrcode-terminal": "^0.12.2",
     "nodemon": "^3.1.10",
-    "supabase": "^2.51.0",
-    "typescript": "^5.5.3"
+    "supabase": "^2.51.0"
   },
   "engines": {
     "node": "20.x",

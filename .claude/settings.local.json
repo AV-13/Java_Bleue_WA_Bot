@@ -13,7 +13,11 @@
       "Bash(npm run generate-flow-keys:*)",
       "Bash(npm run show-public-key:*)",
       "Bash(npx tsc)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(heroku logs:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
