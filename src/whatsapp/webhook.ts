@@ -580,7 +580,7 @@ async function handleMainMenuAction(
         break;
 
       case 'action_location':
-        // Send location pin with natural conversational follow-up
+        // Send location pin first
         await whatsappClient.sendLocationMessage(
           userId,
           JAVA_BLEUE_LOCATION.latitude,
@@ -589,10 +589,10 @@ async function handleMainMenuAction(
           JAVA_BLEUE_LOCATION.address
         );
 
-        // Send warm, conversational follow-up with location context and transport info
+        // Ask for their starting point to build a personalized itinerary
         const locationFollowUp = await generateText(
           mastra,
-          'After showing location pin, write a warm message mentioning we\'re easy to reach by tram (T1/T3) or bus, with parking nearby. Then naturally suggest booking a table. Be conversational and friendly, like chatting with a friend. Around 20-30 words. Avoid bullet points, write in flowing sentences.',
+          'After showing location pin, ask warmly where they\'re coming from so you can build them a personalized itinerary (by public transport, car, or walking). Be friendly and conversational like chatting with a friend. Around 15-25 words. Example style: "D\'où partez-vous ? Je vous construis l\'itinéraire idéal en transports ou en voiture 😊"',
           language
         );
         await whatsappClient.sendTextMessage(userId, locationFollowUp);
