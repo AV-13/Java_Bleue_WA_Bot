@@ -131,7 +131,30 @@ export class WhatsAppClient {
   }
 
   /**
-   * Mark a message as read
+   * Mark a message as read and show typing indicator
+   * According to Meta's best practices, this should be done immediately when receiving a message
+   * to show the user you're preparing a response.
+   */
+  async markAsReadWithTyping(messageId: string): Promise<void> {
+    try {
+      await this.client.post('/messages', {
+        messaging_product: 'whatsapp',
+        status: 'read',
+        message_id: messageId,
+        typing_indicator: {
+          type: 'text',
+        },
+      });
+      console.log(`✓ Message ${messageId} marked as read with typing indicator`);
+    } catch (error: any) {
+      console.error('⚠️ Error marking message as read with typing:', error.response?.data || error.message);
+      // Non-critical error, don't throw
+    }
+  }
+
+  /**
+   * Mark a message as read (without typing indicator)
+   * Use this when you don't intend to respond immediately
    */
   async markAsRead(messageId: string): Promise<void> {
     try {
@@ -148,13 +171,13 @@ export class WhatsAppClient {
   }
 
   /**
-   * Send typing indicator
+   * Send typing indicator to a user
+   * Note: The typing indicator will be dismissed after 25 seconds or when you send a message
+   * @deprecated Use markAsReadWithTyping() instead - it's the recommended approach per Meta docs
    */
   async sendTypingIndicator(to: string): Promise<void> {
     try {
-      // Note: Meta WhatsApp API doesn't support typing indicators directly
-      // This is a placeholder for future implementation or custom logic
-      console.log(`⌨️ Typing indicator for ${to} (simulated)`);
+      console.log(`⌨️ Typing indicator for ${to} (use markAsReadWithTyping for best practice)`);
     } catch (error) {
       // Silent fail for typing indicator
     }

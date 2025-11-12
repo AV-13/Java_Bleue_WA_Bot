@@ -17,7 +17,9 @@
       "Bash(heroku logs:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(heroku releases:*)",
+      "Bash(heroku ps:*)"
     ],
     "deny": [],
     "ask": []
