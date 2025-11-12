@@ -143,7 +143,7 @@ async function detectUserIntent(
 4. "action_view_menu" - Wants to see the FOOD menu/carte (examples: "Show me the menu", "Je veux voir la carte", "Menu please", "Food menu")
 5. "action_reserve" - Wants to book/reserve a table (examples: "I want to reserve", "Réserver une table", "Book a table")
 6. "action_hours" - Wants to know opening hours (examples: "What time are you open?", "Horaires d'ouverture", "When are you open?")
-7. "action_location" - Wants to know address/location (examples: "Where are you?", "Adresse du restaurant", "Location please")
+7. "action_location" - Wants ONLY the address/location pin WITHOUT itinerary (examples: "Where are you?", "Adresse du restaurant", "Location please", "What's your address?")
 8. "action_contact" - Wants contact information (examples: "How can I contact you?", "Coordonnées", "Phone number")
 9. "action_delivery" - Wants to order delivery (examples: "Livraison", "I want delivery", "Order delivery")
 10. "action_takeaway" - Wants to order takeaway (examples: "À emporter", "Takeaway", "Order to go")
@@ -151,12 +151,18 @@ async function detectUserIntent(
 12. "action_shop" - Wants to see the shop (examples: "Boutique", "Shop", "Buy something")
 13. "other" - Other messages that don't fit above categories
 
+CRITICAL RULE FOR ITINERARIES:
+- If the message asks HOW TO GET to the restaurant FROM a specific starting point, respond "other" (NOT "action_location")
+- Examples that MUST be "other": "Comment venir depuis la gare?", "How do I get there from X?", "Itinéraire depuis X", "Je pars de X, comment venir?"
+- Only use "action_location" if they ask for the address WITHOUT mentioning a starting point or how to get there
+
 IMPORTANT:
 - Only respond with ONE of these exact strings
 - If the message is a GENERAL greeting without a specific request, respond "greeting"
 - If the message is a POSITIVE response (yes, oui, ok, etc.), respond "positive_response"
 - If the message asks to see the SERVICES/OPTIONS (not food), respond "show_main_menu"
 - If the message asks for a SPECIFIC action, respond with the action ID (like "action_view_menu")
+- If asking for ITINERARY or HOW TO GET THERE from a starting point, respond "other"
 - If unclear or doesn't match, respond "other"
 
 User message: "${userMessage}"
@@ -580,7 +586,7 @@ async function handleMainMenuAction(
         break;
 
       case 'action_location':
-        // Send location pin first
+        // Send location pin (address request only, not itinerary)
         await whatsappClient.sendLocationMessage(
           userId,
           JAVA_BLEUE_LOCATION.latitude,
@@ -589,10 +595,10 @@ async function handleMainMenuAction(
           JAVA_BLEUE_LOCATION.address
         );
 
-        // Ask for their starting point to build a personalized itinerary
+        // Warm follow-up mentioning we're in Fauriel district and easy to reach
         const locationFollowUp = await generateText(
           mastra,
-          'After showing location pin, ask warmly where they\'re coming from so you can build them a personalized itinerary (by public transport, car, or walking). Be friendly and conversational like chatting with a friend. Around 15-25 words. Example style: "D\'où partez-vous ? Je vous construis l\'itinéraire idéal en transports ou en voiture 😊"',
+          'After showing location pin, write a brief warm message. Mention we\'re in the Fauriel district in Saint-Étienne city center, easy to reach. Offer to help with a personalized itinerary if they tell you where they\'re coming from. Be friendly and conversational. Around 20-30 words.',
           language
         );
         await whatsappClient.sendTextMessage(userId, locationFollowUp);
