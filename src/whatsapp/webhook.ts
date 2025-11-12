@@ -10,7 +10,7 @@ import { WhatsAppClient } from './client.js';
 import { Mastra } from '@mastra/core';
 import { processUserMessage, detectLanguageWithMastra, getJavaBleuAgent } from '../agent/mastra.js';
 import { sessionManager } from '../sessionManager.js';
-// import { getDatabase } from '../database/supabase.js'; // COMMENTED OUT - Supabase disabled for now
+import { getDatabase } from '../database/supabase.js';
 import {
   generateText,
   generateMenuMessage,
@@ -62,6 +62,69 @@ setInterval(() => {
 }, 60 * 60 * 1000); // Run every hour
 
 /**
+ * Process AI-generated text to fix formatting issues
+ * Replaces literal \n with actual newlines for proper WhatsApp display
+ */
+function processFormattedText(text: string): string {
+  // Replace literal \n with actual newline characters
+  return text.replace(/\\n/g, '\n');
+}
+
+/**
+ * Normalize language code to ISO 639-1 format
+ * Handles various input formats: 'French' -> 'fr', 'en-US' -> 'en', 'SPANISH' -> 'es', etc.
+ */
+function normalizeLanguageCode(language: string): string {
+  if (!language) return 'fr'; // Default to French for La Java Bleue
+
+  const lang = language.toLowerCase().trim();
+
+  // Map common language names to ISO codes
+  const languageMap: { [key: string]: string } = {
+    'french': 'fr', 'francais': 'fr', 'français': 'fr',
+    'english': 'en', 'anglais': 'en',
+    'spanish': 'es', 'espanol': 'es', 'español': 'es',
+    'german': 'de', 'deutsch': 'de', 'allemand': 'de',
+    'italian': 'it', 'italiano': 'it', 'italien': 'it',
+    'portuguese': 'pt', 'portugues': 'pt', 'português': 'pt',
+    'dutch': 'nl', 'nederlands': 'nl', 'néerlandais': 'nl',
+    'polish': 'pl', 'polski': 'pl', 'polonais': 'pl',
+    'russian': 'ru', 'русский': 'ru', 'russe': 'ru',
+    'arabic': 'ar', 'عربي': 'ar', 'arabe': 'ar',
+    'chinese': 'zh', '中文': 'zh', 'chinois': 'zh',
+    'japanese': 'ja', '日本語': 'ja', 'japonais': 'ja'
+  };
+
+  // Check if it's a language name
+  if (languageMap[lang]) {
+    return languageMap[lang];
+  }
+
+  // If it's already a 2-letter code, return it
+  if (lang.length === 2 && /^[a-z]{2}$/.test(lang)) {
+    return lang;
+  }
+
+  // Handle locale formats like 'en-US', 'fr-FR'
+  if (lang.includes('-')) {
+    const code = lang.split('-')[0];
+    if (code.length === 2) {
+      return code;
+    }
+  }
+
+  // If nothing matches, try to extract first 2 letters
+  const extracted = lang.substring(0, 2);
+  if (/^[a-z]{2}$/.test(extracted)) {
+    return extracted;
+  }
+
+  // Default fallback
+  console.warn(`⚠️ Could not normalize language code: "${language}", defaulting to French`);
+  return 'fr';
+}
+
+/**
  * Detect user's specific intent using AI (works in ALL languages)
  * Returns the action ID if a specific action is requested, or 'greeting' for general greeting, or null for other messages
  */
@@ -75,20 +138,24 @@ async function detectUserIntent(
     const prompt = `Analyze this user message and determine their intent. Choose ONE option from this list:
 
 1. "greeting" - General greeting without specific request (examples: "Hello", "Bonjour", "Hi", "Hola")
-2. "action_view_menu" - Wants to see the menu/food/carte (examples: "Show me the menu", "Je veux voir la carte", "Menu please")
-3. "action_reserve" - Wants to book/reserve a table (examples: "I want to reserve", "Réserver une table", "Book a table")
-4. "action_hours" - Wants to know opening hours (examples: "What time are you open?", "Horaires d'ouverture", "When are you open?")
-5. "action_location" - Wants to know address/location (examples: "Where are you?", "Adresse du restaurant", "Location please")
-6. "action_contact" - Wants contact information (examples: "How can I contact you?", "Coordonnées", "Phone number")
-7. "action_delivery" - Wants to order delivery (examples: "Livraison", "I want delivery", "Order delivery")
-8. "action_takeaway" - Wants to order takeaway (examples: "À emporter", "Takeaway", "Order to go")
-9. "action_gift_cards" - Wants information about gift cards (examples: "Bon cadeau", "Gift card", "Chèque cadeau")
-10. "action_shop" - Wants to see the shop (examples: "Boutique", "Shop", "Buy something")
-11. "other" - Other messages that don't fit above categories
+2. "positive_response" - Positive answer to a question (examples: "Yes", "Oui", "Si", "Sure", "D'accord", "OK", "Yeah", "Yep", "Bien sûr", "Absolument", "Volontiers", "With pleasure")
+3. "show_main_menu" - Wants to see the main options/services menu (examples: "Show options", "What can you do?", "Voir les options", "Que proposez-vous?", "Menu principal", "Options", "Services")
+4. "action_view_menu" - Wants to see the FOOD menu/carte (examples: "Show me the menu", "Je veux voir la carte", "Menu please", "Food menu")
+5. "action_reserve" - Wants to book/reserve a table (examples: "I want to reserve", "Réserver une table", "Book a table")
+6. "action_hours" - Wants to know opening hours (examples: "What time are you open?", "Horaires d'ouverture", "When are you open?")
+7. "action_location" - Wants to know address/location (examples: "Where are you?", "Adresse du restaurant", "Location please")
+8. "action_contact" - Wants contact information (examples: "How can I contact you?", "Coordonnées", "Phone number")
+9. "action_delivery" - Wants to order delivery (examples: "Livraison", "I want delivery", "Order delivery")
+10. "action_takeaway" - Wants to order takeaway (examples: "À emporter", "Takeaway", "Order to go")
+11. "action_gift_cards" - Wants information about gift cards (examples: "Bon cadeau", "Gift card", "Chèque cadeau")
+12. "action_shop" - Wants to see the shop (examples: "Boutique", "Shop", "Buy something")
+13. "other" - Other messages that don't fit above categories
 
 IMPORTANT:
 - Only respond with ONE of these exact strings
 - If the message is a GENERAL greeting without a specific request, respond "greeting"
+- If the message is a POSITIVE response (yes, oui, ok, etc.), respond "positive_response"
+- If the message asks to see the SERVICES/OPTIONS (not food), respond "show_main_menu"
 - If the message asks for a SPECIFIC action, respond with the action ID (like "action_view_menu")
 - If unclear or doesn't match, respond "other"
 
@@ -103,7 +170,7 @@ Intent:`;
 
     // Validate the response
     const validIntents = [
-      'greeting', 'action_view_menu', 'action_reserve', 'action_hours',
+      'greeting', 'positive_response', 'show_main_menu', 'action_view_menu', 'action_reserve', 'action_hours',
       'action_location', 'action_contact', 'action_delivery', 'action_takeaway',
       'action_gift_cards', 'action_shop', 'other'
     ];
@@ -327,15 +394,15 @@ async function sendMainMenu(
 
     // Define menu items in English (to be translated)
     const menuItems = [
-      { id: 'action_view_menu', englishLabel: 'View our menu', description: 'See our full menu card' },
-      { id: 'action_reserve', englishLabel: 'Book a table', description: 'Make a reservation' },
-      { id: 'action_hours', englishLabel: 'Opening hours', description: 'Check when we are open' },
-      { id: 'action_location', englishLabel: 'Location & Address', description: 'Get directions to the restaurant' },
-      { id: 'action_contact', englishLabel: 'Contact us', description: 'Get our contact information' },
-      { id: 'action_delivery', englishLabel: 'Delivery', description: 'Order for delivery' },
-      { id: 'action_takeaway', englishLabel: 'Takeaway', description: 'Order for takeaway' },
-      { id: 'action_gift_cards', englishLabel: 'Gift cards', description: 'Buy a gift card' },
-      { id: 'action_shop', englishLabel: 'Shop', description: 'Browse our shop' },
+      { id: 'action_view_menu', englishLabel: 'View our menu', description: 'Dishes, wines & prices' },
+      { id: 'action_reserve', englishLabel: 'Book a table', description: 'Choose date & time online' },
+      { id: 'action_hours', englishLabel: 'Opening hours', description: '7 days a week, 11:30-21:30' },
+      { id: 'action_location', englishLabel: 'Location & Address', description: 'Find us in Saint-Etienne' },
+      { id: 'action_contact', englishLabel: 'Contact us', description: 'Phone & website' },
+      { id: 'action_delivery', englishLabel: 'Delivery', description: 'Get our food delivered home' },
+      { id: 'action_takeaway', englishLabel: 'Takeaway', description: 'Order and pick up' },
+      { id: 'action_gift_cards', englishLabel: 'Gift cards', description: 'From 50€, valid 1 year' },
+      { id: 'action_shop', englishLabel: 'Shop', description: 'Loire recipes book & more' },
     ];
 
     // Translate menu item labels using AI
@@ -360,20 +427,41 @@ async function sendMainMenu(
     }));
 
     // Generate body text and button text
-    // Warm and friendly welcome message (a bit longer for warmth)
+    // Professional, warm, and conversion-focused welcome message
     const bodyText = await generateText(
       mastra,
-      'Warm welcome message for La Java Bleue restaurant. Say welcome and ask how can I help you today. Around 10-15 words. Be friendly, inviting and make them feel welcome.',
+      'Professional and inviting welcome for La Java Bleue restaurant. Structure: Welcome message + subtle suggestion to explore our offerings or book a table. Around 15-18 words. Be elegant, courteous, and gently guide toward reservation. Example: "Welcome to La Java Bleue! Discover our services or reserve your table directly."',
       language,
-      'Welcoming greeting for a restaurant chatbot - should feel warm and personal like a friendly server'
+      'Professional restaurant greeting that subtly guides toward conversion - courteous, refined, and action-oriented'
     );
 
-    const buttonText = await generateText(
-      mastra,
-      'Button text meaning "View options" or "See menu". MUST be translated to the target language. Max 2 words. Examples: French="Voir les options", Spanish="Ver opciones", Polish="Zobacz opcje"',
-      language,
-      'Button that opens a list of restaurant services - MUST be in the target language'
-    );
+    // Generate button text - use hardcoded translations for reliability
+    // This is a critical UI element, so we want to ensure it's always correct
+
+    // Normalize language code to handle various formats
+    const normalizedLang = normalizeLanguageCode(language);
+
+    console.log(`🌍 Detected language: "${language}" → Normalized to: "${normalizedLang}"`);
+
+    const buttonTextMap: { [key: string]: string } = {
+      'fr': 'Voir les options',
+      'en': 'View options',
+      'es': 'Ver opciones',
+      'de': 'Optionen anzeigen',
+      'it': 'Vedi opzioni',
+      'pt': 'Ver opções',
+      'nl': 'Opties bekijken',
+      'pl': 'Zobacz opcje',
+      'ru': 'Посмотреть варианты',
+      'ar': 'عرض الخيارات',
+      'zh': '查看选项',
+      'ja': 'オプションを見る'
+    };
+
+    // Use normalized language code for lookup
+    const buttonText = buttonTextMap[normalizedLang] || buttonTextMap['fr']; // Fallback to French
+
+    console.log(`🔘 Menu button text: "${buttonText}" (language: ${language} → ${normalizedLang})`);
 
     // Send interactive list with single section
     await whatsappClient.sendInteractiveList(
@@ -425,30 +513,41 @@ async function handleMainMenuAction(
 
     switch (actionId) {
       case 'action_view_menu':
-        // Send menu link with button - friendly inviting message
+        // Send menu link with button - professional and inviting message
         const menuMessage = await generateText(
           mastra,
-          'Friendly message for viewing our menu. Say something inviting about our menu like "Discover our delicious menu!" Around 10-12 words. Be warm and appetizing.',
+          'Professional invitation to view our menu. Mention our culinary offerings in an elegant way. Around 10-12 words. Tone: refined, appetizing, and professional - like a quality restaurant presenting their carte.',
           language
         );
+        console.log("generated menu message:", menuMessage);
         const menuButtonLabel = await generateText(
           mastra,
           'Button text for "View menu" (2 words max)',
           language
         );
+        console.log("generated menu button label:", menuButtonLabel);
         await whatsappClient.sendCTAUrlButton(
           userId,
           menuMessage,
           menuButtonLabel,
           MENU_URL
         );
+
+        // PROACTIVE: Follow up with reservation prompt
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const menuFollowUp = await generateText(
+          mastra,
+          'After showing menu, proactively suggest reservation. Be inviting and conversion-focused. Around 8-10 words. Example: "Tempted? Would you like to reserve a table?"',
+          language
+        );
+        await whatsappClient.sendTextMessage(userId, menuFollowUp);
         break;
 
       case 'action_reserve':
-        // Send reservation info with button - friendly inviting message
+        // Send reservation info with button - professional, welcoming and enthusiastic
         const reserveMessage = await generateText(
           mastra,
-          'Friendly message for booking a table. Say something inviting like "Reserve your table easily!" Around 10-12 words. Be warm and welcoming.',
+          'Enthusiastic and professional invitation to reserve. Express excitement about welcoming them and mention the ease of booking. Around 12-15 words. Tone: warm, inviting, and eager - like a maître d\'hôtel delighted to serve.',
           language
         );
         const reserveButtonLabel = await generateText(
@@ -462,20 +561,39 @@ async function handleMainMenuAction(
           reserveButtonLabel,
           RESERVATION_URL
         );
+
+        // Add a warm closing message after reservation link
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const reserveClosing = await generateText(
+          mastra,
+          'After sending reservation link, add a warm closing that expresses anticipation. Around 8-10 words. Example: "We look forward to welcoming you soon!"',
+          language
+        );
+        await whatsappClient.sendTextMessage(userId, reserveClosing);
         break;
 
       case 'action_hours':
-        // Send opening hours info - well formatted, friendly with LINE BREAKS
-        const hoursMessage = await generateText(
+        // Send opening hours info - professional and clear with LINE BREAKS
+        const hoursMessageRaw = await generateText(
           mastra,
-          'Tell our opening hours warmly with proper formatting. Structure:\n1. Start with welcoming phrase\n2. NEW LINE then hours: "🕐 11:30 - 21:30" \n3. Same line or new line: "Open 7 days a week, continuously"\n4. NEW LINE then add something nice like "Perfect for lunch or dinner!"\n\nIMPORTANT: Use line breaks (\\n) for readability. Be welcoming and warm.',
+          'Share our opening hours in a professional, clear format. Structure:\n1. Brief opening phrase (e.g., "Our hours:")\n2. NEW LINE then hours: "🕐 11:30 - 21:30"\n3. NEW LINE: "Open 7 days a week, continuous service"\n\nIMPORTANT: Use line breaks (\\n) for readability. Tone: professional, clear, and courteous.',
           language
         );
+        const hoursMessage = processFormattedText(hoursMessageRaw);
         await whatsappClient.sendTextMessage(userId, hoursMessage);
+
+        // PROACTIVE: Follow up with reservation prompt
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const hoursFollowUp = await generateText(
+          mastra,
+          'After showing hours, proactively suggest booking. Be inviting. Around 8-10 words. Example: "Would you like to book a table?"',
+          language
+        );
+        await whatsappClient.sendTextMessage(userId, hoursFollowUp);
         break;
 
       case 'action_location':
-        // Send location pin directly without unnecessary message
+        // Send location pin directly
         await whatsappClient.sendLocationMessage(
           userId,
           JAVA_BLEUE_LOCATION.latitude,
@@ -483,23 +601,42 @@ async function handleMainMenuAction(
           JAVA_BLEUE_LOCATION.name,
           JAVA_BLEUE_LOCATION.address
         );
+
+        // PROACTIVE: Follow up with reservation prompt
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Small delay for better UX
+        const locationFollowUp = await generateText(
+          mastra,
+          'After showing location, ask if they would like to reserve a table. Be proactive and inviting. Around 8-10 words. Example: "Would you like to reserve a table with us?"',
+          language
+        );
+        await whatsappClient.sendTextMessage(userId, locationFollowUp);
         break;
 
       case 'action_contact':
-        // Send contact info - well formatted with emojis, warmth and LINE BREAKS
-        const contactMessage = await generateText(
+        // Send contact info - professional and well formatted with LINE BREAKS
+        const contactMessageRaw = await generateText(
           mastra,
-          'Provide contact information in a friendly warm message with proper formatting. Structure:\n1. Welcoming sentence like "Feel free to contact us!"\n2. NEW LINE then Phone with icon: 📞 04 77 21 80 68\n3. NEW LINE then Website with icon: 🌐 https://www.restaurant-lajavableue.fr/\n\nIMPORTANT: Use actual line breaks (\\n) between each line for readability. Be welcoming and helpful.',
+          'Share contact information in a professional way. Structure:\n1. Brief opening like "Contact information:" or "How to reach us:"\n2. NEW LINE then Phone: 📞 04 77 21 80 68\n3. NEW LINE then Website: 🌐 https://www.restaurant-lajavableue.fr/\n\nIMPORTANT: Use line breaks (\\n) for readability. Tone: professional, clear, and helpful.',
           language
         );
+        const contactMessage = processFormattedText(contactMessageRaw);
         await whatsappClient.sendTextMessage(userId, contactMessage);
+
+        // PROACTIVE: Follow up with reservation prompt
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const contactFollowUp = await generateText(
+          mastra,
+          'After showing contact, suggest online reservation. Be proactive. Around 10-12 words. Example: "You can also reserve your table directly online. Interested?"',
+          language
+        );
+        await whatsappClient.sendTextMessage(userId, contactFollowUp);
         break;
 
       case 'action_delivery':
-        // Send delivery link with button - friendly message
+        // Send delivery link with button - professional message
         const deliveryMessage = await generateText(
           mastra,
-          'Friendly message for delivery service. Say something inviting about ordering delivery. Around 10-12 words. Be warm and helpful.',
+          'Professional message for delivery service. Mention that our cuisine is available for home delivery. Around 10-12 words. Tone: refined, service-oriented, and professional.',
           language
         );
         const deliveryButtonLabel = await generateText(
@@ -516,10 +653,10 @@ async function handleMainMenuAction(
         break;
 
       case 'action_takeaway':
-        // Send takeaway link with button - friendly message
+        // Send takeaway link with button - professional message
         const takeawayMessage = await generateText(
           mastra,
-          'Friendly message for takeaway service. Say something inviting about ordering takeaway. Around 10-12 words. Be warm and helpful.',
+          'Professional message for takeaway service. Mention that our dishes are available for takeaway. Around 10-12 words. Tone: refined, service-oriented, and professional.',
           language
         );
         const takeawayButtonLabel = await generateText(
@@ -536,12 +673,13 @@ async function handleMainMenuAction(
         break;
 
       case 'action_gift_cards':
-        // Send gift cards link with button - friendly message with details
-        const giftCardMessage = await generateText(
+        // Send gift cards link with button - professional message with details
+        const giftCardMessageRaw = await generateText(
           mastra,
-          'Friendly message for gift cards with details. Structure:\n1. Inviting sentence about gift cards being a great gift idea\n2. NEW LINE then mention: From 50€, valid for 365 days\n3. NEW LINE then something warm like "Perfect for any occasion!"\n\nIMPORTANT: Use line breaks (\\n) for readability. Be warm and enthusiastic. Around 15-20 words total.',
+          'Professional message for gift cards. Structure:\n1. Present gift cards as an elegant gifting option\n2. NEW LINE then mention: From 50€, valid for 365 days\n3. NEW LINE then closing: "Perfect for any occasion."\n\nIMPORTANT: Use line breaks (\\n) for readability. Tone: refined, professional, and courteous. Around 15-18 words total.',
           language
         );
+        const giftCardMessage = processFormattedText(giftCardMessageRaw);
         const giftCardButtonLabel = await generateText(
           mastra,
           'Button text for "Buy gift card" (2 words max)',
@@ -556,12 +694,13 @@ async function handleMainMenuAction(
         break;
 
       case 'action_shop':
-        // Send shop link with button - friendly message mentioning Loire recipes book with details
-        const shopMessage = await generateText(
+        // Send shop link with button - professional message mentioning Loire recipes book with details
+        const shopMessageRaw = await generateText(
           mastra,
-          'Friendly message for our shop. Structure:\n1. Inviting sentence about discovering our shop\n2. NEW LINE then mention: "Loire Recipes Book" by 25 local chefs (24.90€)\n3. NEW LINE then something warm about local gastronomy\n\nIMPORTANT: Use line breaks (\\n) for readability. Be warm and inviting. Around 15-20 words total.',
+          'Professional message for our shop. Structure:\n1. Invite them to discover our shop\n2. NEW LINE then present: "Loire Recipes Book" by 25 local chefs (24.90€)\n3. NEW LINE then mention: "Celebrating local gastronomy."\n\nIMPORTANT: Use line breaks (\\n) for readability. Tone: refined, professional, and cultured. Around 15-18 words total.',
           language
         );
+        const shopMessage = processFormattedText(shopMessageRaw);
         const shopButtonLabel = await generateText(
           mastra,
           'Button text for "Visit shop" (2 words max)',
@@ -592,7 +731,7 @@ async function processIncomingMessage(
   whatsappClient: WhatsAppClient,
   mastra: Mastra
 ): Promise<void> {
-  // const database = getDatabase(); // COMMENTED OUT - Supabase disabled
+  const database = getDatabase();
 
   try {
     const userId = message.from;
@@ -635,11 +774,10 @@ async function processIncomingMessage(
           throw new Error('META_WHATSAPP_TOKEN not configured');
         }
 
-        // const tempConversation = await database.getOrCreateConversation(userId);
-        // const tempMessages = await database.getConversationHistory(tempConversation.id, 5);
-        // const tempHistory = database.formatHistoryForMastra(tempMessages);
-        // const languageHint = await detectUserLanguage(userId, '', mastra, tempHistory);
-        const languageHint = 'fr'; // Default to French
+        const tempConversation = await database.getOrCreateConversation(userId);
+        const tempMessages = await database.getConversationHistory(tempConversation.id, 5);
+        const tempHistory = database.formatHistoryForMastra(tempMessages);
+        const languageHint = await detectUserLanguage(userId, '', mastra, tempHistory);
 
         const transcription = await processAudioMessage(mediaId, accessToken, languageHint);
         userMessage = transcription;
@@ -664,11 +802,10 @@ async function processIncomingMessage(
       console.log(`📍 Location received: ${message.location.latitude}, ${message.location.longitude}`);
 
       try {
-        // const tempConversation = await database.getOrCreateConversation(userId);
-        // const tempMessages = await database.getConversationHistory(tempConversation.id, 5);
-        // const tempHistory = database.formatHistoryForMastra(tempMessages);
-        // const userLanguage = await detectUserLanguage(userId, '', mastra, tempHistory);
-        const userLanguage = 'fr'; // Default to French
+        const tempConversation = await database.getOrCreateConversation(userId);
+        const tempMessages = await database.getConversationHistory(tempConversation.id, 5);
+        const tempHistory = database.formatHistoryForMastra(tempMessages);
+        const userLanguage = await detectUserLanguage(userId, '', mastra, tempHistory);
 
         // Simple location response without using generateLocationResponse
         const locationResponse = `Merci pour votre localisation ! Voici notre adresse : ${JAVA_BLEUE_LOCATION.address}`;
@@ -721,23 +858,23 @@ async function processIncomingMessage(
     await whatsappClient.markAsRead(messageId);
     await whatsappClient.sendTypingIndicator(userId);
 
-    // Database integration - COMMENTED OUT (Supabase disabled)
-    // const conversation = await database.getOrCreateConversation(userId);
-    // const isNewUser = await database.isNewUser(userId);
-    const isNewUser = false; // Default to false since database is disabled
+    // Database integration - Get or create conversation
+    const conversation = await database.getOrCreateConversation(userId);
+    const isNewUser = await database.isNewUser(userId);
 
-    // await database.saveMessage({
-    //   conversation_id: conversation.id,
-    //   wa_message_id: messageId,
-    //   direction: 'in',
-    //   sender: 'user',
-    //   message_type: message.type,
-    //   text_content: userMessage
-    // });
+    // Save incoming message to database
+    await database.saveMessage({
+      conversation_id: conversation.id,
+      wa_message_id: messageId,
+      direction: 'in',
+      sender: 'user',
+      message_type: message.type,
+      text_content: userMessage
+    });
 
-    // const messages = await database.getConversationHistory(conversation.id, 10);
-    // const conversationHistory = database.formatHistoryForMastra(messages);
-    const conversationHistory = undefined; // No conversation history without database
+    // Get conversation history for context
+    const messages = await database.getConversationHistory(conversation.id, 10);
+    const conversationHistory = database.formatHistoryForMastra(messages);
 
     const detectedLanguage = await detectUserLanguage(userId, userMessage, mastra, conversationHistory);
 
@@ -748,14 +885,31 @@ async function processIncomingMessage(
       return;
     }
 
-    // Check if user message is a greeting or menu request using AI (works in ALL languages)
-    // const isGreetingOrMenuRequest = await checkIfGreetingOrMenuRequest(userMessage, mastra);
+    // For text messages, detect user intent to provide direct responses
+    if (!isButtonClick) {
+      console.log(`🔍 Detecting intent for text message: "${userMessage}"`);
+      const detectedIntent = await detectUserIntent(userMessage, mastra);
 
-    // Send main menu directly for greetings or menu requests
-    if (!userMessage.includes('carte') && !userMessage.includes('food')) {
-      await sendMainMenu(userId, whatsappClient, detectedLanguage, mastra);
-      console.log(`✅ Main menu sent for greeting/menu request - ${userId}`);
-      return;
+      if (detectedIntent) {
+        if (detectedIntent === 'greeting' || detectedIntent === 'show_main_menu') {
+          // Show main menu for general greetings or explicit menu requests
+          await sendMainMenu(userId, whatsappClient, detectedLanguage, mastra);
+          console.log(`✅ Main menu sent for ${detectedIntent} - ${userId}`);
+          return;
+        } else if (detectedIntent === 'positive_response') {
+          // User said YES! Trigger reservation flow
+          console.log(`✅ Positive response detected - triggering reservation for ${userId}`);
+          await handleMainMenuAction(userId, 'action_reserve', whatsappClient, detectedLanguage, mastra);
+          console.log(`✅ Reservation triggered after positive response - ${userId}`);
+          return;
+        } else if (detectedIntent.startsWith('action_')) {
+          // User requested a specific action directly - execute it!
+          console.log(`🎯 Direct action requested: ${detectedIntent}`);
+          await handleMainMenuAction(userId, detectedIntent, whatsappClient, detectedLanguage, mastra);
+          console.log(`✅ Direct action response sent for ${detectedIntent} - ${userId}`);
+          return;
+        }
+      }
     }
 
     // Process through Mastra
@@ -856,13 +1010,14 @@ async function processIncomingMessage(
         console.log(`✅ Text response sent to ${userId}`);
       }
 
-      // await database.saveMessage({
-      //   conversation_id: conversation.id,
-      //   direction: 'out',
-      //   sender: 'bot',
-      //   message_type: 'text',
-      //   text_content: agentResponse.text
-      // }); // COMMENTED OUT - Supabase disabled
+      // Save outgoing message to database
+      await database.saveMessage({
+        conversation_id: conversation.id,
+        direction: 'out',
+        sender: 'bot',
+        message_type: 'text',
+        text_content: agentResponse.text
+      });
 
       // Send location pin if user explicitly requested it
       if (agentResponse.sendLocation) {

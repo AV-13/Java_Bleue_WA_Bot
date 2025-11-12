@@ -12,7 +12,8 @@
       "WebFetch(domain:developers.facebook.com)",
       "Bash(npm run generate-flow-keys:*)",
       "Bash(npm run show-public-key:*)",
-      "Bash(npx tsc)"
+      "Bash(npx tsc)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
