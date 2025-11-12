@@ -403,10 +403,10 @@ async function sendMainMenu(
       { id: 'action_view_menu', englishLabel: 'View our menu' },
       { id: 'action_reserve', englishLabel: 'Book a table' },
       { id: 'action_hours', englishLabel: 'Opening hours' },
-      { id: 'action_location', englishLabel: 'Location & Address', description: 'Find us in Saint-Etienne' },
+      { id: 'action_location', englishLabel: 'Location & Address' },
       { id: 'action_contact', englishLabel: 'Contact us' },
-      { id: 'action_delivery', englishLabel: 'Delivery', description: 'Get our food delivered home' },
-      { id: 'action_takeaway', englishLabel: 'Takeaway', description: 'Order and pick up' },
+      { id: 'action_delivery', englishLabel: 'Delivery' },
+      { id: 'action_takeaway', englishLabel: 'Takeaway' },
       { id: 'action_gift_cards', englishLabel: 'Gift cards' },
       { id: 'action_shop', englishLabel: 'Shop' },
     ];
