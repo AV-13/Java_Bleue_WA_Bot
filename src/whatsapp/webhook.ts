@@ -418,33 +418,11 @@ async function sendMainMenu(
       language
     );
 
-    // Translate descriptions only for items that have descriptions
-    const itemsWithDescriptions = menuItems.filter(item => item.description);
-    const translatedDescriptions = itemsWithDescriptions.length > 0
-      ? await generateListLabels(
-          mastra,
-          itemsWithDescriptions.map(item => ({ id: item.id, englishLabel: item.description! })),
-          language
-        )
-      : [];
-
-    // Build rows with translated labels and descriptions (only where applicable)
-    const rows = menuItems.map((item, index) => {
-      const row: { id: string; title: string; description?: string } = {
-        id: item.id,
-        title: translatedLabels[index]?.label || item.englishLabel,
-      };
-
-      // Add description only if the item has one
-      if (item.description) {
-        const descIndex = itemsWithDescriptions.findIndex(i => i.id === item.id);
-        if (descIndex >= 0) {
-          row.description = translatedDescriptions[descIndex]?.label || item.description;
-        }
-      }
-
-      return row;
-    });
+    // Build rows with translated labels only
+    const rows = menuItems.map((item, index) => ({
+      id: item.id,
+      title: translatedLabels[index]?.label || item.englishLabel,
+    }));
 
     // Generate body text and button text
     // Professional, warm, and conversion-focused welcome message
