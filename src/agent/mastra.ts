@@ -881,7 +881,14 @@ export async function processUserMessage(
     }
 
     // Step 1: Detect the language of the message (or use pre-detected)
-    const detectedLanguage = preDetectedLanguage || await detectLanguageWithMastra(mastra, userMessage);
+    let detectedLanguage: string;
+    if (preDetectedLanguage) {
+      detectedLanguage = preDetectedLanguage;
+      console.log(`✅ Using PRE-DETECTED language: ${detectedLanguage}`);
+    } else {
+      detectedLanguage = await detectLanguageWithMastra(mastra, userMessage);
+      console.log(`🔍 Freshly detected language: ${detectedLanguage}`);
+    }
 
     // Step 2: Translate to English for intent detection
     const translatedMessage = await translateToEnglish(mastra, userMessage, detectedLanguage);

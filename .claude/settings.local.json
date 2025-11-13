@@ -22,7 +22,8 @@
       "Bash(heroku ps:*)",
       "Bash(curl -s https://la-java-bleue-wa-bot-ac9e2ab0abdd.herokuapp.com/)",
       "Bash(dir:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(heroku git:remote:*)"
     ],
     "deny": [],
     "ask": []

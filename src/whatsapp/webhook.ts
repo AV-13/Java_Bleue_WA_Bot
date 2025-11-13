@@ -858,6 +858,14 @@ async function processIncomingMessage(
     const detectedLanguage = await detectUserLanguage(userId, userMessage, mastra, conversationHistory);
     console.log(`🌐 Language detected in webhook for user ${userId}: ${detectedLanguage} (message type: ${message.type})`);
 
+    // Extra logging for audio messages
+    if (message.type === 'audio' || message.type === 'voice') {
+      console.log(`🎤 AUDIO MESSAGE DETECTED`);
+      console.log(`🎤 Transcription: "${userMessage}"`);
+      console.log(`🎤 Detected language from transcription: ${detectedLanguage}`);
+      console.log(`🎤 This language will be passed to processUserMessage`);
+    }
+
     // Handle main menu action clicks
     if (userMessage.startsWith('action_')) {
       await handleMainMenuAction(userId, userMessage, whatsappClient, detectedLanguage, mastra);
