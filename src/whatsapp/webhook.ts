@@ -736,7 +736,7 @@ async function processIncomingMessage(
     else if (message.type === 'text' && message.text?.body) {
       userMessage = message.text.body.trim();
     }
-    // Handle audio messages
+    // Handle audio messages - transcribe and treat as text
     else if ((message.type === 'audio' || message.type === 'voice') && (message.audio?.id || message.voice?.id)) {
       const mediaId = message.audio?.id || message.voice?.id;
       if (!mediaId) {
@@ -761,9 +761,13 @@ async function processIncomingMessage(
         console.log(`🎤 Using language hint for Whisper: ${languageHint}`);
 
         const transcription = await processAudioMessage(mediaId, accessToken, languageHint);
+
+        // CRITICAL: Treat transcribed audio EXACTLY like a text message
+        // Set userMessage to transcription and continue processing as text
         userMessage = transcription;
 
-        console.log(`✅ Transcription complete: "${transcription}"`);
+        console.log(`✅ Audio transcription complete: "${transcription}"`);
+        console.log(`🔄 Now processing transcribed audio as regular text message`);
       } catch (error: any) {
         console.error('❌ Error transcribing audio:', error);
         const errorLang = await detectUserLanguage(userId, '', mastra);
@@ -855,15 +859,13 @@ async function processIncomingMessage(
     const messages = await database.getConversationHistory(conversation.id, 10);
     const conversationHistory = database.formatHistoryForMastra(messages);
 
+    // Detect language from the user message (works the same for text and transcribed audio)
     const detectedLanguage = await detectUserLanguage(userId, userMessage, mastra, conversationHistory);
-    console.log(`🌐 Language detected in webhook for user ${userId}: ${detectedLanguage} (message type: ${message.type})`);
+    console.log(`🌐 Language detected for user ${userId}: ${detectedLanguage} (original type: ${message.type})`);
 
-    // Extra logging for audio messages
+    // Log that audio was transcribed (for debugging only)
     if (message.type === 'audio' || message.type === 'voice') {
-      console.log(`🎤 AUDIO MESSAGE DETECTED`);
-      console.log(`🎤 Transcription: "${userMessage}"`);
-      console.log(`🎤 Detected language from transcription: ${detectedLanguage}`);
-      console.log(`🎤 This language will be passed to processUserMessage`);
+      console.log(`🎤 [Audio was transcribed to text and is now being processed like a regular text message]`);
     }
 
     // Handle main menu action clicks
