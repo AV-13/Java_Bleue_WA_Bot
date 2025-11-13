@@ -855,6 +855,7 @@ async function processIncomingMessage(
     const conversationHistory = database.formatHistoryForMastra(messages);
 
     const detectedLanguage = await detectUserLanguage(userId, userMessage, mastra, conversationHistory);
+    console.log(`🌐 Language detected in webhook for user ${userId}: ${detectedLanguage} (message type: ${message.type})`);
 
     // Handle main menu action clicks
     if (userMessage.startsWith('action_')) {
@@ -896,13 +897,14 @@ async function processIncomingMessage(
       }
     }
 
-    // Process through Mastra
+    // Process through Mastra (pass detected language to avoid double detection)
     const agentResponse = await processUserMessage(
       mastra,
       userMessage,
       userId,
       conversationHistory,
-      isNewUser
+      isNewUser,
+      detectedLanguage  // Pass pre-detected language
     );
 
     const userLanguage = agentResponse.detectedLanguage || 'fr';
@@ -1022,12 +1024,34 @@ async function processIncomingMessage(
         const photosToSend = agentResponse.sendPhotos;
 
         try {
+          // Generate captions in user's language
+          const burgerCaption = await generateText(
+            mastra,
+            'Photo caption for our signature charolais beef burger (max 10 words)',
+            userLanguage,
+            'Short photo caption for burger'
+          );
+
+          const steakCaption = await generateText(
+            mastra,
+            'Photo caption for steak with homemade beef fat fries (max 10 words)',
+            userLanguage,
+            'Short photo caption for steak-frites'
+          );
+
+          const restaurantCaption = await generateText(
+            mastra,
+            'Photo caption for La Java Bleue restaurant ambiance (max 8 words)',
+            userLanguage,
+            'Short photo caption for restaurant interior'
+          );
+
           // Send burger photo if requested
           if (photosToSend.burger) {
             await whatsappClient.sendImage(
               userId,
               PHOTO_URLS.burger,
-              'Notre burger signature au bœuf charolais 🍔'
+              `${burgerCaption} 🍔`
             );
             console.log(`✅ Burger photo sent to ${userId}`);
           }
@@ -1037,7 +1061,7 @@ async function processIncomingMessage(
             await whatsappClient.sendImage(
               userId,
               PHOTO_URLS.steak,
-              'Steak avec frites maison à la graisse de bœuf 🥩'
+              `${steakCaption} 🥩`
             );
             console.log(`✅ Steak-frites photo sent to ${userId}`);
           }
@@ -1047,7 +1071,7 @@ async function processIncomingMessage(
             await whatsappClient.sendImage(
               userId,
               PHOTO_URLS.restaurant,
-              'L\'ambiance de La Java Bleue 🍴'
+              `${restaurantCaption} 🍴`
             );
             console.log(`✅ Restaurant photo sent to ${userId}`);
           }

@@ -712,14 +712,27 @@ export async function detectLanguageWithMastra(
 
 IMPORTANT: Ignore any dates (YYYY-MM-DD) or times (HH:MM) as these are international formats. Focus on the actual words and sentences.
 
+Examples:
+- "Bonjour, comment allez-vous ?" → fr
+- "Hello, how are you?" → en
+- "Hola, ¿cómo estás?" → es
+- "J'aimerais réserver une table" → fr
+- "I want to book a table" → en
+
 Message: "${cleanedMessage}"
 
 Language code:`;
 
     const result = await agent.generate(prompt);
-    const languageCode = (result.text || 'fr').trim().toLowerCase().substring(0, 2);
+    const rawResponse = result.text || 'fr';
+    const languageCode = rawResponse.trim().toLowerCase().substring(0, 2);
 
-    console.log(`🌍 Detected language: ${languageCode} for message: "${message.substring(0, 50)}..." (cleaned: "${cleanedMessage.substring(0, 50)}...")`);
+    console.log(`🌍 Language detection details:`);
+    console.log(`   Original message: "${message.substring(0, 100)}"`);
+    console.log(`   Cleaned message: "${cleanedMessage.substring(0, 100)}"`);
+    console.log(`   AI raw response: "${rawResponse}"`);
+    console.log(`   Extracted code: "${languageCode}"`);
+
     return languageCode;
   } catch (error: any) {
     console.error('❌ Error detecting language:', error);
@@ -844,6 +857,7 @@ Response:`;
  * @param userId - User's phone number
  * @param conversationHistory - Optional conversation history for context
  * @param isNewUser - Whether this is a new user
+ * @param preDetectedLanguage - Optional pre-detected language to avoid double detection
  * @returns Processed message result with response and metadata
  */
 export async function processUserMessage(
@@ -851,7 +865,8 @@ export async function processUserMessage(
   userMessage: string,
   userId: string,
   conversationHistory?: string,
-  isNewUser: boolean = false
+  isNewUser: boolean = false,
+  preDetectedLanguage?: string
 ): Promise<ProcessedMessageResult> {
   try {
     const agent = getJavaBleuAgent(mastra);
@@ -861,9 +876,12 @@ export async function processUserMessage(
     if (conversationHistory) {
       console.log(`   Conversation history available: ${conversationHistory.length} chars`);
     }
+    if (preDetectedLanguage) {
+      console.log(`   Pre-detected language: ${preDetectedLanguage}`);
+    }
 
-    // Step 1: Detect the language of the message
-    const detectedLanguage = await detectLanguageWithMastra(mastra, userMessage);
+    // Step 1: Detect the language of the message (or use pre-detected)
+    const detectedLanguage = preDetectedLanguage || await detectLanguageWithMastra(mastra, userMessage);
 
     // Step 2: Translate to English for intent detection
     const translatedMessage = await translateToEnglish(mastra, userMessage, detectedLanguage);
