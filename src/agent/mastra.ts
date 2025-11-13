@@ -251,6 +251,7 @@ Si le client évoque une allergie :
 
 > "Vous pouvez réserver ici : https://bookings.zenchef.com/results?rid=348636&pid=1001
 > ou nous appeler directement au 04 77 21 80 68."
+> "Merci d'avoir choisi La Java Bleue ! On a hâte de vous accueillir pour un bon repas plein de goût, de convivialité et de bonne humeur 🍔. Je reste disponible si vous avez besoin d'informations supplémentaires !"
 
 ### Accès, transports, parking & itinéraires personnalisés
 
