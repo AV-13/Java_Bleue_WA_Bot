@@ -752,17 +752,29 @@ async function processIncomingMessage(
           throw new Error('META_WHATSAPP_TOKEN not configured');
         }
 
+        // Get language hint from history for better Whisper transcription
         const tempConversation = await database.getOrCreateConversation(userId);
         const tempMessages = await database.getConversationHistory(tempConversation.id, 5);
         const tempHistory = database.formatHistoryForMastra(tempMessages);
         const languageHint = await detectUserLanguage(userId, '', mastra, tempHistory);
+
+        console.log(`🎤 Using language hint for Whisper: ${languageHint}`);
 
         const transcription = await processAudioMessage(mediaId, accessToken, languageHint);
         userMessage = transcription;
 
         console.log(`✅ Transcription: "${transcription}"`);
 
-        // Removed intermediate "I heard" message - process transcription directly
+        // CRITICAL: Force language detection from the fresh transcription
+        // Don't rely on cache or history - detect from the actual transcribed text
+        const transcriptionLanguage = await detectLanguageWithMastra(mastra, transcription);
+        console.log(`🎤 Language detected from transcription: ${transcriptionLanguage}`);
+
+        // Update cache with the transcription language
+        userLanguageCache.set(userId, { language: transcriptionLanguage, lastUpdated: Date.now() });
+
+        // Mark this as an audio message for later processing
+        isButtonClick = false; // Make sure it's treated as a regular message
       } catch (error: any) {
         console.error('❌ Error transcribing audio:', error);
         const errorLang = await detectUserLanguage(userId, '', mastra);
@@ -856,6 +868,12 @@ async function processIncomingMessage(
 
     const detectedLanguage = await detectUserLanguage(userId, userMessage, mastra, conversationHistory);
     console.log(`🌐 Language detected in webhook for user ${userId}: ${detectedLanguage} (message type: ${message.type})`);
+
+    // Extra validation for audio messages
+    if (message.type === 'audio' || message.type === 'voice') {
+      console.log(`🎤 AUDIO MESSAGE - Final language for response: ${detectedLanguage}`);
+      console.log(`🎤 AUDIO MESSAGE - Transcription text: "${userMessage}"`);
+    }
 
     // Handle main menu action clicks
     if (userMessage.startsWith('action_')) {
