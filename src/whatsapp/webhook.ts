@@ -553,7 +553,7 @@ async function handleMainMenuAction(
         // Send reservation info with button - professional, welcoming and enthusiastic with warm closing
         const reserveMessage = await generateText(
           mastra,
-          'Enthusiastic invitation to reserve with warm closing. Structure: Express excitement about welcoming them and ease of booking, then add warm closing expressing anticipation. Total around 20-25 words. Example: "We\'re delighted to welcome you! Reserve your table easily online. We look forward to offering you an unforgettable experience soon!"',
+          'Enthusiastic invitation to reserve with warm closing. Structure: Express excitement about welcoming them and ease of booking, then add warm closing expressing anticipation. Total around 20-25 words. Example: "Merci d\'avoir choisi La Java Bleue ! On a hâte de vous accueillir pour un bon repas plein de goût, de convivialité et de bonne humeur 🍔. Je reste disponible si vous avez besoin d\'informations supplémentaires !""',
           language
         );
         const reserveButtonLabel = await generateText(
@@ -1018,32 +1018,41 @@ async function processIncomingMessage(
 
       // Send photos if user explicitly requested them
       if (agentResponse.sendPhotos) {
-        console.log(`📸 User requested photos, sending restaurant photos to ${userId}`);
+        console.log(`📸 User requested photos, determining which photos to send...`);
+        const photosToSend = agentResponse.sendPhotos;
 
         try {
-          // Send burger photo
-          await whatsappClient.sendImage(
-            userId,
-            PHOTO_URLS.burger,
-            'Notre burger signature au bœuf charolais 🍔'
-          );
-          console.log(`✅ Burger photo sent to ${userId}`);
+          // Send burger photo if requested
+          if (photosToSend.burger) {
+            await whatsappClient.sendImage(
+              userId,
+              PHOTO_URLS.burger,
+              'Notre burger signature au bœuf charolais 🍔'
+            );
+            console.log(`✅ Burger photo sent to ${userId}`);
+          }
 
-          // Send steak-frites photo
-          await whatsappClient.sendImage(
-            userId,
-            PHOTO_URLS.steak,
-            'Steak avec frites maison à la graisse de bœuf 🥩'
-          );
-          console.log(`✅ Steak-frites photo sent to ${userId}`);
+          // Send steak-frites photo if requested
+          if (photosToSend.steak) {
+            await whatsappClient.sendImage(
+              userId,
+              PHOTO_URLS.steak,
+              'Steak avec frites maison à la graisse de bœuf 🥩'
+            );
+            console.log(`✅ Steak-frites photo sent to ${userId}`);
+          }
 
-          // Send restaurant photo
-          await whatsappClient.sendImage(
-            userId,
-            PHOTO_URLS.restaurant,
-            'L\'ambiance de La Java Bleue 🍴'
-          );
-          console.log(`✅ Restaurant photo sent to ${userId}`);
+          // Send restaurant photo if requested
+          if (photosToSend.restaurant) {
+            await whatsappClient.sendImage(
+              userId,
+              PHOTO_URLS.restaurant,
+              'L\'ambiance de La Java Bleue 🍴'
+            );
+            console.log(`✅ Restaurant photo sent to ${userId}`);
+          }
+
+          console.log(`📸 Photo sending complete for ${userId}`);
         } catch (photoError: any) {
           console.error('❌ Error sending photos:', photoError);
           // Continue even if photos fail - user already has the text response

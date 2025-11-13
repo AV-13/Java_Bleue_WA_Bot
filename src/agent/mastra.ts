@@ -555,22 +555,35 @@ Informations détaillées sur les bons cadeaux :
 
 Si l'utilisateur demande des photos des plats ou du restaurant :
 
-1. Propose immédiatement et naturellement de lui envoyer des photos
-2. Sois enthousiaste et accueillant dans ta réponse
-3. Tu as accès à 3 photos :
-   - **Burger** : notre burger signature au bœuf charolais
-   - **Steak-frites** : notre steak avec frites maison à la graisse de bœuf
-   - **Restaurant** : l'ambiance et le décor de La Java Bleue
+1. Réponds de manière naturelle et enthousiaste
+2. **NE JAMAIS** écrire "[insérer photo ici]" ou tout autre placeholder dans ta réponse
+3. **NE PAS** mentionner que tu vas envoyer des photos - elles seront envoyées automatiquement
+4. Réponds simplement avec une description brève et appétissante
 
-### Exemples de réponses :
+Tu as accès à 3 photos qui seront envoyées automatiquement selon la demande :
+   - **Burger** : burger au bœuf charolais
+   - **Steak** : steak-frites maison à la graisse de bœuf
+   - **Restaurant** : ambiance et décor de La Java Bleue
 
-> "Avec plaisir ! Je vous envoie quelques photos de nos plats signatures 📸"
+### Exemples de réponses (les photos seront envoyées automatiquement) :
 
-> "Bien sûr ! Voici nos burgers au bœuf charolais et notre steak-frites maison 😋"
+Si demande de burger :
+> "Notre burger signature au bœuf charolais élevé en Haute-Loire, avec pain brioché maison et nos fameuses frites 😋"
 
-> "Je vous montre l'ambiance de La Java Bleue ainsi que nos spécialités !"
+Si demande de steak :
+> "Notre steak avec frites maison à la graisse de bœuf, produits frais et locaux 🥩"
 
-**IMPORTANT : Sois naturel et enthousiaste. Les photos rendent le restaurant plus attractif et donnent envie de venir !**
+Si demande générale de plats :
+> "Nos spécialités : burgers au charolais et viandes françaises avec frites maison à la graisse de bœuf 🍔"
+
+Si demande du restaurant :
+> "Ambiance bistrot convivial et rétro, hors du temps, parfait pour un repas entre amis ou en famille 🍴"
+
+**RÈGLES ABSOLUES :**
+- ❌ Ne JAMAIS écrire "[photo]", "[insérer photo]", "voici la photo", ou toute mention d'envoi de photo
+- ✅ Décris simplement le plat ou l'ambiance de manière appétissante
+- ✅ Les photos sont envoyées automatiquement par le système selon les mots-clés détectés
+- ✅ Reste naturel, comme si tu décrivais verbalement le plat
 
 ## 🔒 Confidentialité & mentions légales
 
@@ -656,7 +669,11 @@ export interface ProcessedMessageResult {
   sendDeliveryButton?: boolean; // Flag to send delivery button
   sendTakeawayButton?: boolean; // Flag to send takeaway button
   sendGiftCardButton?: boolean; // Flag to send gift card button
-  sendPhotos?: boolean; // Flag to send photos of dishes and restaurant
+  sendPhotos?: {
+    burger?: boolean;
+    steak?: boolean;
+    restaurant?: boolean;
+  }; // Object specifying which photos to send
 }
 
 /**
@@ -800,8 +817,37 @@ export async function processUserMessage(
     const giftCardKeywords = ['bon cadeau', 'bons cadeaux', 'gift card', 'carte cadeau', 'chèque cadeau'];
     const isGiftCardRequest = giftCardKeywords.some(keyword => lowerMessage.includes(keyword));
 
-    const photoKeywords = ['photo', 'photos', 'picture', 'pictures', 'image', 'images', 'voir', 'show', 'montrer', 'imagen', 'imágenes'];
-    const isPhotoRequest = photoKeywords.some(keyword => lowerMessage.includes(keyword));
+    // Intelligent photo detection - detect WHICH photos to send
+    const photoKeywords = ['photo', 'photos', 'picture', 'pictures', 'image', 'images', 'voir', 'show', 'montrer', 'imagen', 'imágenes', 'visualiser', 'afficher'];
+    const hasPhotoRequest = photoKeywords.some(keyword => lowerMessage.includes(keyword));
+
+    let photoSelection = undefined;
+    if (hasPhotoRequest) {
+      // Detect specific requests
+      const burgerKeywords = ['burger', 'burgers', 'hamburger'];
+      const steakKeywords = ['steak', 'viande', 'meat', 'frite', 'frites', 'fries', 'côte', 'entrecôte'];
+      const restaurantKeywords = ['restaurant', 'ambiance', 'décor', 'atmosphere', 'lieu', 'place', 'salle', 'intérieur', 'interior'];
+
+      const wantsBurger = burgerKeywords.some(keyword => lowerMessage.includes(keyword));
+      const wantsSteak = steakKeywords.some(keyword => lowerMessage.includes(keyword));
+      const wantsRestaurant = restaurantKeywords.some(keyword => lowerMessage.includes(keyword));
+
+      // If specific items mentioned, send only those
+      if (wantsBurger || wantsSteak || wantsRestaurant) {
+        photoSelection = {
+          burger: wantsBurger,
+          steak: wantsSteak,
+          restaurant: wantsRestaurant
+        };
+      } else {
+        // Generic request like "show me photos" - send all food photos (burger + steak)
+        photoSelection = {
+          burger: true,
+          steak: true,
+          restaurant: false
+        };
+      }
+    }
 
     // Step 4: Build context for the agent
     let contextPrompt = userMessage;
@@ -841,7 +887,7 @@ export async function processUserMessage(
       sendDeliveryButton: isDeliveryRequest, // Send delivery button if user requested delivery
       sendTakeawayButton: isTakeawayRequest, // Send takeaway button if user requested takeaway
       sendGiftCardButton: isGiftCardRequest, // Send gift card button if user requested gift cards
-      sendPhotos: isPhotoRequest, // Send photos if user requested photos
+      sendPhotos: photoSelection, // Send specific photos based on user request
     };
   } catch (error: any) {
     console.error('❌ Error processing message with Mastra agent:', error);
