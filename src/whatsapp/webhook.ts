@@ -736,19 +736,14 @@ async function processIncomingMessage(
     else if (message.type === 'text' && message.text?.body) {
       userMessage = message.text.body.trim();
     }
-    // Track if this is an audio message and its detected language
-    let isAudioMessage = false;
-    let audioLanguage: string | undefined = undefined;
-
     // Handle audio messages
-    if ((message.type === 'audio' || message.type === 'voice') && (message.audio?.id || message.voice?.id)) {
+    else if ((message.type === 'audio' || message.type === 'voice') && (message.audio?.id || message.voice?.id)) {
       const mediaId = message.audio?.id || message.voice?.id;
       if (!mediaId) {
         console.error('❌ Audio message received but no media ID found');
         return;
       }
 
-      isAudioMessage = true;
       console.log(`🎤 Audio/Voice message received, transcribing...`);
 
       try {
@@ -768,18 +763,7 @@ async function processIncomingMessage(
         const transcription = await processAudioMessage(mediaId, accessToken, languageHint);
         userMessage = transcription;
 
-        console.log(`✅ Transcription: "${transcription}"`);
-
-        // CRITICAL: Force language detection from the fresh transcription
-        // Don't rely on cache or history - detect from the actual transcribed text
-        audioLanguage = await detectLanguageWithMastra(mastra, transcription);
-        console.log(`🎤 Language DETECTED from transcription: ${audioLanguage}`);
-
-        // Update cache with the transcription language
-        userLanguageCache.set(userId, { language: audioLanguage, lastUpdated: Date.now() });
-
-        // Mark this as an audio message for later processing
-        isButtonClick = false; // Make sure it's treated as a regular message
+        console.log(`✅ Transcription complete: "${transcription}"`);
       } catch (error: any) {
         console.error('❌ Error transcribing audio:', error);
         const errorLang = await detectUserLanguage(userId, '', mastra);
@@ -871,19 +855,8 @@ async function processIncomingMessage(
     const messages = await database.getConversationHistory(conversation.id, 10);
     const conversationHistory = database.formatHistoryForMastra(messages);
 
-    // Use audio language if available, otherwise detect normally
-    const detectedLanguage = isAudioMessage && audioLanguage
-      ? audioLanguage
-      : await detectUserLanguage(userId, userMessage, mastra, conversationHistory);
-
+    const detectedLanguage = await detectUserLanguage(userId, userMessage, mastra, conversationHistory);
     console.log(`🌐 Language detected in webhook for user ${userId}: ${detectedLanguage} (message type: ${message.type})`);
-
-    // Extra validation for audio messages
-    if (isAudioMessage) {
-      console.log(`🎤 AUDIO MESSAGE - Using language: ${detectedLanguage}`);
-      console.log(`🎤 AUDIO MESSAGE - Transcription text: "${userMessage}"`);
-      console.log(`🎤 AUDIO MESSAGE - Audio language was: ${audioLanguage}`);
-    }
 
     // Handle main menu action clicks
     if (userMessage.startsWith('action_')) {
