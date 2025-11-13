@@ -131,6 +131,38 @@ export class WhatsAppClient {
   }
 
   /**
+   * Send an image to a WhatsApp user
+   */
+  async sendImage(
+    to: string,
+    imageUrl: string,
+    caption?: string
+  ): Promise<WhatsAppResponse> {
+    try {
+      const payload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'image',
+        image: {
+          link: imageUrl,
+          ...(caption && { caption }),
+        },
+      };
+
+      console.log(`📤 Sending image to ${to}: ${imageUrl}`);
+
+      const response = await this.client.post('/messages', payload);
+
+      console.log('✅ Image sent successfully');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error sending WhatsApp image:', error.response?.data || error.message);
+      throw new Error(`Failed to send WhatsApp image: ${error.message}`);
+    }
+  }
+
+  /**
    * Mark a message as read and show typing indicator
    * According to Meta's best practices, this should be done immediately when receiving a message
    * to show the user you're preparing a response.

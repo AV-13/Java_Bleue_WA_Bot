@@ -394,6 +394,15 @@ const DELIVERY_URL = 'https://www.restaurant-lajavableue.fr/?livraison';
 const TAKEAWAY_URL = 'https://ccdl.zenchef.com/articles?rid=348636';
 const GIFT_CARD_URL = 'https://lajavableue.bonkdo.com/fr/';
 
+// PHOTO CONFIGURATION - Available photos from /assets/photos
+// These are served via the /photos endpoint (see index.ts)
+const PHOTO_BASE_URL = process.env.BASE_URL || 'https://la-java-bleue-wa-bot-ac9e2ab0abdd.herokuapp.com';
+const PHOTO_URLS = {
+  burger: `${PHOTO_BASE_URL}/photos/Burger.jpg`,
+  steak: `${PHOTO_BASE_URL}/photos/steak-frite.jpg`,
+  restaurant: `${PHOTO_BASE_URL}/photos/restaurant.jpg`,
+};
+
 /**
  * Send main menu with all available actions (multilingue)
  */
@@ -1005,6 +1014,40 @@ async function processIncomingMessage(
           JAVA_BLEUE_LOCATION.address
         );
         console.log(`✅ Location pin sent to ${userId}`);
+      }
+
+      // Send photos if user explicitly requested them
+      if (agentResponse.sendPhotos) {
+        console.log(`📸 User requested photos, sending restaurant photos to ${userId}`);
+
+        try {
+          // Send burger photo
+          await whatsappClient.sendImage(
+            userId,
+            PHOTO_URLS.burger,
+            'Notre burger signature au bœuf charolais 🍔'
+          );
+          console.log(`✅ Burger photo sent to ${userId}`);
+
+          // Send steak-frites photo
+          await whatsappClient.sendImage(
+            userId,
+            PHOTO_URLS.steak,
+            'Steak avec frites maison à la graisse de bœuf 🥩'
+          );
+          console.log(`✅ Steak-frites photo sent to ${userId}`);
+
+          // Send restaurant photo
+          await whatsappClient.sendImage(
+            userId,
+            PHOTO_URLS.restaurant,
+            'L\'ambiance de La Java Bleue 🍴'
+          );
+          console.log(`✅ Restaurant photo sent to ${userId}`);
+        } catch (photoError: any) {
+          console.error('❌ Error sending photos:', photoError);
+          // Continue even if photos fail - user already has the text response
+        }
       }
     }
 

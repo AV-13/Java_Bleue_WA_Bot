@@ -552,19 +552,26 @@ Informations détaillées sur les bons cadeaux :
 
 ## 📸 Photos des plats - RÈGLE CRITIQUE
 
-**TU NE PEUX PAS ENVOYER DE PHOTOS**
+**TU PEUX ENVOYER DES PHOTOS DES PLATS ET DU RESTAURANT**
 
-Si l'utilisateur demande des photos des plats :
+Si l'utilisateur demande des photos des plats ou du restaurant :
 
-1. Refuse poliment en expliquant que tu n'as pas accès à des images
-2. Propose de décrire les plats en détail
-3. Base-toi **UNIQUEMENT** sur les informations des menus (ne pas inventer)
+1. Propose immédiatement et naturellement de lui envoyer des photos
+2. Sois enthousiaste et accueillant dans ta réponse
+3. Tu as accès à 3 photos :
+   - **Burger** : notre burger signature au bœuf charolais
+   - **Steak-frites** : notre steak avec frites maison à la graisse de bœuf
+   - **Restaurant** : l'ambiance et le décor de La Java Bleue
 
-### Exemple de réponse :
+### Exemples de réponses :
 
-> "Je n'ai pas d'images ici, mais je peux vous décrire nos plats ! Nos burgers au bœuf charolais sont servis avec nos fameuses frites maison à la graisse de bœuf. Voulez-vous que je vous envoie la carte complète ?"
+> "Avec plaisir ! Je vous envoie quelques photos de nos plats signatures 📸"
 
-**IMPORTANT : Ne jamais inventer de détails qui ne sont pas dans les informations fournies.**
+> "Bien sûr ! Voici nos burgers au bœuf charolais et notre steak-frites maison 😋"
+
+> "Je vous montre l'ambiance de La Java Bleue ainsi que nos spécialités !"
+
+**IMPORTANT : Sois naturel et enthousiaste. Les photos rendent le restaurant plus attractif et donnent envie de venir !**
 
 ## 🔒 Confidentialité & mentions légales
 
@@ -650,6 +657,7 @@ export interface ProcessedMessageResult {
   sendDeliveryButton?: boolean; // Flag to send delivery button
   sendTakeawayButton?: boolean; // Flag to send takeaway button
   sendGiftCardButton?: boolean; // Flag to send gift card button
+  sendPhotos?: boolean; // Flag to send photos of dishes and restaurant
 }
 
 /**
@@ -793,6 +801,9 @@ export async function processUserMessage(
     const giftCardKeywords = ['bon cadeau', 'bons cadeaux', 'gift card', 'carte cadeau', 'chèque cadeau'];
     const isGiftCardRequest = giftCardKeywords.some(keyword => lowerMessage.includes(keyword));
 
+    const photoKeywords = ['photo', 'photos', 'picture', 'pictures', 'image', 'images', 'voir', 'show', 'montrer', 'imagen', 'imágenes'];
+    const isPhotoRequest = photoKeywords.some(keyword => lowerMessage.includes(keyword));
+
     // Step 4: Build context for the agent
     let contextPrompt = userMessage;
 
@@ -831,6 +842,7 @@ export async function processUserMessage(
       sendDeliveryButton: isDeliveryRequest, // Send delivery button if user requested delivery
       sendTakeawayButton: isTakeawayRequest, // Send takeaway button if user requested takeaway
       sendGiftCardButton: isGiftCardRequest, // Send gift card button if user requested gift cards
+      sendPhotos: isPhotoRequest, // Send photos if user requested photos
     };
   } catch (error: any) {
     console.error('❌ Error processing message with Mastra agent:', error);
