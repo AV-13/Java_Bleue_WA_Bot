@@ -752,13 +752,36 @@ async function processIncomingMessage(
           throw new Error('META_WHATSAPP_TOKEN not configured');
         }
 
-        // Get language hint from history for better Whisper transcription
+        // Get language hint from cache or conversation history for Whisper transcription
+        // DO NOT call detectUserLanguage with empty string as it corrupts the cache!
         const tempConversation = await database.getOrCreateConversation(userId);
         const tempMessages = await database.getConversationHistory(tempConversation.id, 5);
         const tempHistory = database.formatHistoryForMastra(tempMessages);
-        const languageHint = await detectUserLanguage(userId, '', mastra, tempHistory);
 
-        console.log(`🎤 Using language hint for Whisper: ${languageHint}`);
+        // Try to get language from cache first
+        const cachedLanguage = userLanguageCache.get(userId);
+        let languageHint = 'fr'; // Default to French for La Java Bleue
+
+        if (cachedLanguage && (Date.now() - cachedLanguage.lastUpdated) < LANGUAGE_CACHE_DURATION) {
+          languageHint = cachedLanguage.language;
+          console.log(`🎤 Using cached language for Whisper hint: ${languageHint}`);
+        } else if (tempHistory) {
+          // Try to extract language from last user message in history
+          const historyLines = tempHistory.split('\n');
+          for (let i = historyLines.length - 1; i >= 0; i--) {
+            const line = historyLines[i];
+            if (line.startsWith('User: ')) {
+              const lastUserMessage = line.substring(6).trim();
+              if (lastUserMessage.length > 5) {
+                languageHint = await detectLanguageWithMastra(mastra, lastUserMessage);
+                console.log(`🎤 Detected language from history for Whisper hint: ${languageHint}`);
+                break;
+              }
+            }
+          }
+        } else {
+          console.log(`🎤 Using default French for Whisper hint (no history)`);
+        }
 
         const transcription = await processAudioMessage(mediaId, accessToken, languageHint);
 
