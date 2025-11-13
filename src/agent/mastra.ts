@@ -766,6 +766,77 @@ Translation:`;
 }
 
 /**
+ * Detect if user wants to see photos and which ones using AI
+ *
+ * @param mastra - Mastra instance
+ * @param message - User's message in English
+ * @returns Photo selection object or undefined if no photos requested
+ */
+export async function detectPhotoRequest(
+  mastra: Mastra,
+  message: string
+): Promise<{ burger?: boolean; steak?: boolean; restaurant?: boolean } | undefined> {
+  try {
+    const agent = getJavaBleuAgent(mastra);
+
+    const prompt = `Analyze this user message and determine if they want to see PHOTOS of our restaurant or dishes.
+
+User message: "${message}"
+
+Available photos:
+- burger: burger with charolais beef
+- steak: steak with homemade fries
+- restaurant: restaurant ambiance/decor/interior
+
+Respond with ONLY ONE of these options (no explanations):
+1. "none" - if they don't want photos
+2. "burger" - if they want to see the burger
+3. "steak" - if they want to see steak/meat/fries dishes
+4. "restaurant" - if they want to see the restaurant ambiance/decor/interior
+5. "burger,steak" - if they want to see food dishes in general (not specific)
+6. "burger,restaurant" - if they want both burger and restaurant
+7. "steak,restaurant" - if they want both steak and restaurant
+8. "burger,steak,restaurant" - if they want to see everything
+
+Examples:
+- "show me your burgers" → "burger"
+- "what do the burgers look like" → "burger"
+- "can I see photos of your food" → "burger,steak"
+- "show me the restaurant" → "restaurant"
+- "photos of steak" → "steak"
+- "what are your hours" → "none"
+
+Response:`;
+
+    const result = await agent.generate(prompt);
+    const response = (result.text || 'none').trim().toLowerCase();
+
+    console.log(`📸 Photo detection for "${message}": ${response}`);
+
+    if (response === 'none') {
+      return undefined;
+    }
+
+    // Parse the response
+    const photos = {
+      burger: response.includes('burger'),
+      steak: response.includes('steak'),
+      restaurant: response.includes('restaurant')
+    };
+
+    // If nothing detected, return undefined
+    if (!photos.burger && !photos.steak && !photos.restaurant) {
+      return undefined;
+    }
+
+    return photos;
+  } catch (error: any) {
+    console.error('❌ Error detecting photo request:', error);
+    return undefined;
+  }
+}
+
+/**
  * Process a user message through the Mastra agent
  *
  * @param mastra - Mastra instance
@@ -817,37 +888,8 @@ export async function processUserMessage(
     const giftCardKeywords = ['bon cadeau', 'bons cadeaux', 'gift card', 'carte cadeau', 'chèque cadeau'];
     const isGiftCardRequest = giftCardKeywords.some(keyword => lowerMessage.includes(keyword));
 
-    // Intelligent photo detection - detect WHICH photos to send
-    const photoKeywords = ['photo', 'photos', 'picture', 'pictures', 'image', 'images', 'voir', 'show', 'montrer', 'imagen', 'imágenes', 'visualiser', 'afficher'];
-    const hasPhotoRequest = photoKeywords.some(keyword => lowerMessage.includes(keyword));
-
-    let photoSelection = undefined;
-    if (hasPhotoRequest) {
-      // Detect specific requests
-      const burgerKeywords = ['burger', 'burgers', 'hamburger'];
-      const steakKeywords = ['steak', 'viande', 'meat', 'frite', 'frites', 'fries', 'côte', 'entrecôte'];
-      const restaurantKeywords = ['restaurant', 'ambiance', 'décor', 'atmosphere', 'lieu', 'place', 'salle', 'intérieur', 'interior'];
-
-      const wantsBurger = burgerKeywords.some(keyword => lowerMessage.includes(keyword));
-      const wantsSteak = steakKeywords.some(keyword => lowerMessage.includes(keyword));
-      const wantsRestaurant = restaurantKeywords.some(keyword => lowerMessage.includes(keyword));
-
-      // If specific items mentioned, send only those
-      if (wantsBurger || wantsSteak || wantsRestaurant) {
-        photoSelection = {
-          burger: wantsBurger,
-          steak: wantsSteak,
-          restaurant: wantsRestaurant
-        };
-      } else {
-        // Generic request like "show me photos" - send all food photos (burger + steak)
-        photoSelection = {
-          burger: true,
-          steak: true,
-          restaurant: false
-        };
-      }
-    }
+    // Step 3b: Detect photo requests using AI
+    const photoSelection = await detectPhotoRequest(mastra, translatedMessage);
 
     // Step 4: Build context for the agent
     let contextPrompt = userMessage;
@@ -860,8 +902,10 @@ export async function processUserMessage(
       contextPrompt = `[NEW USER - First time interacting]\n\n${contextPrompt}`;
     }
 
-    // Add language instruction
-    contextPrompt = `[User is speaking in language code: ${detectedLanguage}. You MUST respond in the same language.]\n\n${contextPrompt}`;
+    // Add language instruction - CRITICAL for multilingual support
+    contextPrompt = `[CRITICAL: User is speaking in language code: ${detectedLanguage}. You MUST respond ONLY in this language - ${detectedLanguage}. NEVER respond in English unless the user's language is 'en'. This is a STRICT requirement.]\n\n${contextPrompt}`;
+
+    console.log(`🌍 Detected language for response: ${detectedLanguage}`);
 
     // Generate response using the agent
     const result = await agent.generate(contextPrompt, {
